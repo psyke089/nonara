@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Nonara</string>
+    <string name="notes_empty_title">No notes yet</string>
+    <string name="notes_empty_body">Notes you write will appear here.</string>
+</resources>
