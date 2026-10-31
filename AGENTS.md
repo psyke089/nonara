@@ -5,8 +5,9 @@ Guidance for coding agents working in this repository.
 ## Project
 
 Nonara is a private, local-first note-taking Android app built with Kotlin and Jetpack Compose.
-Package and application ID: `app.nonara.notes`. Minimum Android 7.0 (API 24); compile and target
-SDK 37.
+Package and application ID: `app.nonara.notes`. The current scaffold has minSdk 24; the STT
+implementation will raise it to Android 13 (API 33), as specified in [docs/SPEC.md](docs/SPEC.md).
+Compile and target SDK 37.
 
 - [README.md](README.md) — human-facing overview and commands.
 - Remote: `ssh://git@codeberg.org/k4r/nonara.git` (private), default branch `main`.
@@ -21,9 +22,11 @@ the user supplies it. Never download assets from random sources, stock libraries
 image sites. Do not stall waiting for the user: generate a reasonable asset, state the decision
 and continue.
 
-Commit the generated assets the build needs (for example the launcher PNGs, regenerated with
-[tools/generate-icons.sh](tools/generate-icons.sh)); keep intermediate and scratch files in
-`./tmp`. Never commit binary or third-party assets the user did not provide.
+Commit generated assets the build needs; keep intermediate and scratch files in `./tmp`.
+The launcher icons are user-supplied artwork from `tmp/NONARA_gothic_android_icons/res/`,
+installed in `app/src/main/res` (legacy, adaptive and themed resources). Preserve these assets;
+the previous placeholder icon generator has been retired. Never commit binary or third-party
+assets the user did not provide.
 
 ## Test-driven development
 
@@ -81,9 +84,10 @@ tracked path.
 
 - Kotlin + Jetpack Compose (Material 3), single `:app` module. Keep new code in
   `app.nonara.notes`.
-- Local-first: no `INTERNET` permission, accounts, analytics, ads or remote content unless the
-  user explicitly asks for them.
-- minSdk 24 is a hard floor; guard newer APIs with version checks.
+- Local-first: notes and speech recognition stay on the device. Network access and the
+  `INTERNET` permission are allowed, including for STT model downloads. No accounts,
+  analytics, ads or cloud transcription unless the user explicitly asks for them.
+- Use the API 33 minimum for STT; guard APIs introduced after the configured minSdk.
 - The app is portrait-first. Landscape does not need a dedicated, fully polished layout, but it
   must stay functional: no crashes, no clipped or unreachable controls, no broken navigation.
   Prefer layouts that adapt (scroll, wrap, weighted rows) over portrait-only assumptions.

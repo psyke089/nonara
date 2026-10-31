@@ -2,12 +2,17 @@
 
 A private, local-first note-taking app for Android, built with Kotlin and Jetpack Compose.
 
-Nonara runs entirely on the device: no accounts, no analytics, no ads and no network access.
+Nonara keeps notes and speech recognition on the device: no accounts, no analytics and no ads.
+Network access is allowed for downloading speech models; transcription will work offline once
+the required models are installed.
 
 ## Status
 
 Project scaffolding. The app launches to an empty notes screen; note capture, editing and
 persistence are not implemented yet.
+
+The [product and technical specification](docs/SPEC.md) targets Android 13 / API 33 or newer. The current
+scaffold still uses minSdk 24; implementation of STT will raise it to 33.
 
 ## Requirements
 
