@@ -7,9 +7,9 @@
 **Status:** Product and STT specification; performance and visual defaults require validation
 
 This is the single source of truth for product and implementation requirements, consolidating
-the former product and STT documents. The current app remains a scaffold; this document does
-not claim the specified features are already implemented. Raise its current minSdk 24 to 33
-with dictation implementation. Package/application ID: `app.nonara.notes`.
+the former product and STT documents. Implementation progress and remaining gaps are tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md).
+The app uses minSdk 33; this specification includes acceptance requirements that are not yet
+fully validated. Package/application ID: `app.nonara.notes`.
 
 ---
 
@@ -783,7 +783,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - Follow repository TDD: write failing behavioral tests first; every milestone includes tests.
   Mock echoes/wiring-only checks do not establish correctness. Run relevant JVM and instrumented
   suites on implementation handoff; report unavailable device cases.
-- Primary physical device: OnePlus 5 (`ONEPLUS A5010`), Android 13/API 33. A Pixel 6 can be an
+- Primary physical device: OnePlus 5T (`ONEPLUS A5010`), Android 13/API 33. A Pixel 6 can be an
   additional benchmark, not a substitute. Use no emulator without explicit user approval.
 - JVM tests cover readiness combinations, start/stop during loading, repeated stop/release,
   pause/resume, stale callbacks, terminal-event uniqueness, journal backpressure, retry limits,
@@ -798,7 +798,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
   short answers, intentional repetition, numbers, punctuation, silence, noise and continuous
   speech; 30-second and 5-minute samples. No third-party audio downloads. Inject saved PCM into
   Sherpa; test Android's service microphone separately rather than assuming file injection.
-- Provisional OnePlus 5 base-model gates: zero nonempty finals from silence; clean-speech WER
+- Provisional OnePlus 5T base-model gates: zero nonempty finals from silence; clean-speech WER
   ≤ 20% for each language (lowercase, punctuation ignored); median RTF < 0.5 over repeated
   5-minute clips; p95 inference latency ≤ 5 seconds per closed 10-second segment; peak process
   PSS ≤ 1 GB; no unbounded memory growth/crashes. RTF = decode wall time / decoded audio duration.
@@ -821,7 +821,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 2. **File store and reliability:** UUID filenames, safe directory handling, atomic commits, revision serialization, recovery, trash.
 3. **Text experience:** Home, search, plain-text editor, autosave states, preferences, basic styling.
 4. **Import/export:** Portable ZIP export, safe import, index rebuild, privacy/backup configuration.
-5. **Platform/capture:** Raise minSdk to 33; add microphone/network/service-query declarations; foreground PCM capture, pause/resume, interruption checkpoints and overlay.
+5. **Platform/capture:** Use minSdk 33; add microphone/network/service-query declarations; foreground PCM capture, pause/resume, interruption checkpoints and overlay.
 6. **Sherpa spike and provisioning:** Pin runtime/models; temporarily provision a verified base model in private storage for development (not a bundled production model); benchmark on the OnePlus 5; build explicit downloads with verification/atomic installation.
 7. **Transcription/recovery:** Segment checkpoints, WorkManager, atomic receipt-based insertion, recovery and cleanup; then optional Android live mode with its separate guarantees.
 8. **Polish and QA:** Accessibility, dark mode, low-storage/crash testing, performance, quiet animations, release validation.

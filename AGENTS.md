@@ -5,8 +5,7 @@ Guidance for coding agents working in this repository.
 ## Project
 
 Nonara is a private, local-first note-taking Android app built with Kotlin and Jetpack Compose.
-Package and application ID: `app.nonara.notes`. The current scaffold has minSdk 24; the STT
-implementation will raise it to Android 13 (API 33), as specified in [docs/SPEC.md](docs/SPEC.md).
+Package and application ID: `app.nonara.notes`. Minimum Android 13 (API 33), as specified in [docs/SPEC.md](docs/SPEC.md).
 Compile and target SDK 37.
 
 - [README.md](README.md) — human-facing overview and commands.
@@ -62,7 +61,7 @@ project has no release signing configuration and no store publication target.
 
 ## Device testing
 
-A physical Android phone is connected over ADB for testing — currently a OnePlus 5
+A physical Android phone is connected over ADB for testing — currently a OnePlus 5T
 (`ONEPLUS A5010`, Android 13 / API 33). Check with `adb devices`; expect one `device` entry.
 
 Develop and verify against that real device. Use an emulator only if no physical device is

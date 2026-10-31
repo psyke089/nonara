@@ -8,18 +8,19 @@ the required models are installed.
 
 ## Status
 
-Project scaffolding. The app launches to an empty notes screen; note capture, editing and
-persistence are not implemented yet.
+The app includes Home/search, a Markdown editor with automatic saves, trash/restore, ZIP
+import/export, theme settings, model downloads, recoverable Sherpa recording/transcription,
+and optional Android live dictation. Android 13 / API 33 is the minimum.
 
-The [product and technical specification](docs/SPEC.md) targets Android 13 / API 33 or newer. The current
-scaffold still uses minSdk 24; implementation of STT will raise it to 33.
+The [product and technical specification](docs/SPEC.md) remains the target. See
+[implementation status](docs/IMPLEMENTATION.md) for remaining work and validation limits.
 
 ## Requirements
 
 - JDK 17 or newer
 - Android SDK platform 37 and build-tools 36.0.0
 - Android Studio (open this directory as a project) or a terminal
-- A physical Android device with USB debugging enabled (Android 7.0 / API 24 or newer)
+- A physical Android device with USB debugging enabled (Android 13 / API 33 or newer)
 
 ## Build, test and run
 

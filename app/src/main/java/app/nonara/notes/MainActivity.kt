@@ -12,6 +12,8 @@ import app.nonara.notes.ui.theme.NonaraTheme
 import app.nonara.notes.ui.theme.Paper
 
 class MainActivity : ComponentActivity() {
+    private val model by lazy { androidx.lifecycle.ViewModelProvider(this)[AppModel::class.java] }
+    override fun onStop() { if(!isChangingConfigurations) model.lifecycleStop(); super.onStop() }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -19,8 +21,8 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Paper.toArgb()),
         )
         setContent {
-            NonaraTheme {
-                NotesScreen()
+            NonaraTheme(model.theme) {
+                NotesScreen(model)
             }
         }
     }
