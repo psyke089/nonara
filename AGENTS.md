@@ -84,4 +84,7 @@ tracked path.
 - Local-first: no `INTERNET` permission, accounts, analytics, ads or remote content unless the
   user explicitly asks for them.
 - minSdk 24 is a hard floor; guard newer APIs with version checks.
+- The app is portrait-first. Landscape does not need a dedicated, fully polished layout, but it
+  must stay functional: no crashes, no clipped or unreachable controls, no broken navigation.
+  Prefer layouts that adapt (scroll, wrap, weighted rows) over portrait-only assumptions.
 - Tests and docs change with the code. Remove scaffolding and throwaway scripts once verified.
