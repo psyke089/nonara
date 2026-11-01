@@ -228,5 +228,230 @@
       "en-US"
     ],
     "license": "Parakeet TDT 0.6B v3: CC-BY-4.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0"
+  },
+  {
+    "id": "canary-180m",
+    "repo": "csukuangfj/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8",
+    "version": "9077164e0d3dd1d5353743e89ceaa1d3a770838c",
+    "runtime": "2.0.1",
+    "name": "Canary 180M Flash",
+    "description": "NVIDIA Canary \u00b7 compact multilingual dictation.",
+    "family": "canary",
+    "source": "https://huggingface.co/nvidia/canary-180m-flash",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Canary 180M Flash: CC-BY-4.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "decoder.int8.onnx",
+        "size": 74437848,
+        "sha256": "e41a2ab9c0c2fe81a1e8ade5a45fb02a74bc4db7d1f91b89a54a25e2cf79cba2",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8/resolve/9077164e0d3dd1d5353743e89ceaa1d3a770838c/decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "encoder.int8.onnx",
+        "size": 132678643,
+        "sha256": "7a75b4e2a5857a6dcc0819503bbe3fad66943db4a3ccf21d3f27c633667d303f",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8/resolve/9077164e0d3dd1d5353743e89ceaa1d3a770838c/encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 53555,
+        "sha256": "2dae6fc7815f9640645e0c765522b278ee0cef49b482d91f6913e334628d3e77",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-canary-180m-flash-en-es-de-fr-int8/resolve/9077164e0d3dd1d5353743e89ceaa1d3a770838c/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "omnilingual-300m",
+    "repo": "csukuangfj/sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12",
+    "version": "6abf1ece20cd2308bdb7d13cd78ec1c44fa4c094",
+    "runtime": "2.0.1",
+    "name": "Omnilingual ASR 300M",
+    "description": "Meta Omnilingual \u00b7 1,600+ languages, including German.",
+    "family": "omnilingual",
+    "source": "https://huggingface.co/facebook/omniASR-CTC-300M",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Omnilingual ASR: Apache-2.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "model.int8.onnx",
+        "size": 365352120,
+        "sha256": "e7c4e54ee4c4c47829cc6667d5d00ed8ea7bef1dcfeef0fce766f77752a2726c",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12/resolve/6abf1ece20cd2308bdb7d13cd78ec1c44fa4c094/model.int8.onnx",
+        "role": "model"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 86423,
+        "sha256": "a7a044c52cb29cbe8b0dc1953e92cefd4ca16b0ed968177b6beab21f9a7d0b31",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-omnilingual-asr-1600-languages-300M-ctc-int8-2025-11-12/resolve/6abf1ece20cd2308bdb7d13cd78ec1c44fa4c094/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "nemotron-3.5",
+    "repo": "csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11",
+    "version": "ab43d895f5985b1bbab8b6eac8607fcdc05343f3",
+    "runtime": "2.0.1",
+    "name": "Nemotron 3.5",
+    "description": "NVIDIA Nemotron \u00b7 multilingual saved dictation.",
+    "family": "nemotron",
+    "source": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Nemotron 3.5: OpenMDW-1.1; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "decoder.int8.onnx",
+        "size": 14978075,
+        "sha256": "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/resolve/ab43d895f5985b1bbab8b6eac8607fcdc05343f3/decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "encoder.int8.onnx",
+        "size": 657601403,
+        "sha256": "012e9321373af99021415e0b0eb3ec827b4be3153be6f30d9b448fe65e896e68",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/resolve/ab43d895f5985b1bbab8b6eac8607fcdc05343f3/encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "joiner.int8.onnx",
+        "size": 9504438,
+        "sha256": "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/resolve/ab43d895f5985b1bbab8b6eac8607fcdc05343f3/joiner.int8.onnx",
+        "role": "joiner"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 131440,
+        "sha256": "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11/resolve/ab43d895f5985b1bbab8b6eac8607fcdc05343f3/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "whisper-turbo",
+    "repo": "csukuangfj/sherpa-onnx-whisper-turbo",
+    "version": "2ca6ff69fc878651b770880507669577ac41c2ff",
+    "runtime": "2.0.1",
+    "name": "Whisper Turbo",
+    "description": "Multilingual Whisper \u00b7 reduced decoder, larger download.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-large-v3-turbo",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Whisper Turbo: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "turbo-decoder.int8.onnx",
+        "size": 361080764,
+        "sha256": "20accd02388482eb3a46bd615631adfdc85e1eb2c7db9ea3f02a40ffe6b81547",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-turbo/resolve/2ca6ff69fc878651b770880507669577ac41c2ff/turbo-decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "turbo-encoder.int8.onnx",
+        "size": 674716297,
+        "sha256": "b02dcdf54f348741e93fe732b67d933c8dcb6735655f710640143081db38878b",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-turbo/resolve/2ca6ff69fc878651b770880507669577ac41c2ff/turbo-encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "turbo-tokens.txt",
+        "size": 816730,
+        "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-turbo/resolve/2ca6ff69fc878651b770880507669577ac41c2ff/turbo-tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "whisper-large-v3",
+    "repo": "csukuangfj/sherpa-onnx-whisper-large-v3",
+    "version": "2a6507094dd6020d939d78e3f1834a1d06267fca",
+    "runtime": "2.0.1",
+    "name": "Whisper Large v3",
+    "description": "Multilingual Whisper \u00b7 largest option; may be slow on older phones.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-large-v3",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Whisper Large v3: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "large-v3-decoder.int8.onnx",
+        "size": 1008265203,
+        "sha256": "ebc6bfd88e162a46cb3edee8a7e727e1dcbc65cabecb19e2573695e4d495e1af",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3/resolve/2a6507094dd6020d939d78e3f1834a1d06267fca/large-v3-decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "large-v3-encoder.int8.onnx",
+        "size": 766671985,
+        "sha256": "d531cf17248acc43e8c09b472a0877055e770877857a5332fc1304b36534ec85",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3/resolve/2a6507094dd6020d939d78e3f1834a1d06267fca/large-v3-encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "large-v3-tokens.txt",
+        "size": 816730,
+        "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3/resolve/2a6507094dd6020d939d78e3f1834a1d06267fca/large-v3-tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
   }
 ]

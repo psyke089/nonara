@@ -105,9 +105,10 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
             require(model.ready(size)) { "Install the $size model in Settings, then retry" }
             captures.state(id,"transcribing")
             val folder=model.directory(size)
-            val recognizer=OfflineRecognizer(config=model.info(size).recognizerConfig(folder,r.getString("language")))
-            val vad=Vad(config=VadModelConfig(sileroVadModelConfig=SileroVadModelConfig(
-                model=File(folder,"silero_vad.onnx").path,minSilenceDuration=0.5f,maxSpeechDuration=10f)))
+            val recognizer=createModelSegmentDecoder(model.info(size),folder,r.getString("language"))
+            val vad=try { Vad(config=VadModelConfig(sileroVadModelConfig=SileroVadModelConfig(
+                model=File(folder,"silero_vad.onnx").path,minSilenceDuration=0.5f,maxSpeechDuration=10f))) }
+                catch(e:Exception) { recognizer.close(); throw e }
             val texts=mutableListOf<String>(); var segment=0
             try {
                 suspend fun drain() {
@@ -116,10 +117,8 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
                         val cached=File(captures.dir(id),"segment-${segment++}.txt")
                         val samples=vad.front().samples
                         val text=if(cached.exists()) cached.readText() else {
-                            val stream=recognizer.createStream()
-                            try { stream.acceptWaveform(samples,16000); recognizer.decode(stream)
-                                recognizer.getResult(stream).text.trim().also { atomicWrite(cached,it.toByteArray()) }
-                            } finally { stream.release() }
+                            val job = currentCoroutineContext()
+                            recognizer.transcribe(samples) { job.ensureActive() }.also { atomicWrite(cached,it.toByteArray()) }
                         }
                         texts+=text; vad.pop()
                     }
@@ -135,7 +134,7 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
                         }
                     }; vad.flush(); drain(); vad.reset()
                 }
-            } finally { vad.release(); recognizer.release() }
+            } finally { try { vad.release() } finally { recognizer.close() } }
             captures.commit(id,texts.filter { it.isNotBlank() }.joinToString(" ")); Result.success()
         } catch(e: CancellationException) { throw e }
         catch(e: Exception) { if(runCatching { captures.read(id).getString("state") }.getOrNull()!="discarded") captures.state(id,"failed",e.message ?: "Transcription failed"); Result.failure() }

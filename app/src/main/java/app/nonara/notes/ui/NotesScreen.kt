@@ -188,7 +188,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 OutlinedButton(onClick={import.launch(arrayOf("application/zip","application/octet-stream"))}) { Text("Import notes") }
                 TextButton(onClick={model.page="trash"}) { Text("Trash · retained for 30 days") }
                 Text(model.status)
-                HorizontalDivider(); Text("NONARA 0.3.1\nA place for passing thoughts.")
+                HorizontalDivider(); Text("NONARA 0.3.2\nA place for passing thoughts.")
                 Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, Parakeet (NVIDIA) / CC-BY-4.0, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {

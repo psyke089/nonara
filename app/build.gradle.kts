@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val nonaraVersionCode = 4
-val nonaraVersionName = "0.3.1"
+val nonaraVersionCode = 5
+val nonaraVersionName = "0.3.2"
 
 // Release signing key: supplied from ~/.gradle/gradle.properties (`nonara.*`) or CI env vars.
 // Never commit the keystore, its passwords or this file's values.

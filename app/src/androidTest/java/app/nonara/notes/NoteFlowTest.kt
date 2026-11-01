@@ -61,6 +61,28 @@ class NoteFlowTest {
             compose.waitUntil(5000) { model.modelSize==original }
         }
     }
+    @Test fun everyNewChoiceIsReachableAndPreservesGerman() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val original=Triple(model.modelSize,model.mode,model.language)
+        try {
+            compose.runOnIdle { model.preference("language","de-DE") }
+            compose.waitUntil(5000) { model.language=="de-DE" }
+            compose.onNodeWithText("Settings").performClick()
+            for(id in listOf("canary-180m","omnilingual-300m","nemotron-3.5","whisper-turbo","whisper-large-v3")) {
+                compose.onNodeWithTag("model-$id").performScrollTo().performClick()
+                compose.waitUntil(5000) { model.modelSize==id && model.language=="de-DE" && model.mode=="sherpa" }
+                compose.onNodeWithTag("model-$id").assertIsSelected()
+            }
+            compose.onNodeWithText("Deutsch",substring=false).performScrollTo().assertIsSelected()
+        } finally {
+            compose.runOnIdle {
+                model.preference("model",original.first)
+                model.preference("mode",original.second)
+                model.preference("language",original.third)
+            }
+            compose.waitUntil(5000) { model.modelSize==original.first && model.mode==original.second && model.language==original.third }
+        }
+    }
     @Test fun typedThoughtPersistsAndCanBeFoundAgain() {
         val text="Nonara UI regression ${newId()}"
         val store=Stores.notes(compose.activity)

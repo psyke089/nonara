@@ -468,13 +468,22 @@ ordinary note edit/delete operation, not a way to race an already committed work
 
 - Pin sherpa-onnx Kotlin/JNI and ONNX Runtime versions/ABIs. Validate API 33 and native-library
   packaging on supported devices before adopting a prebuilt distribution.
-- Downloadable int8 models: multilingual Whisper Tiny/Base/Small/Medium, NVIDIA Parakeet TDT
-  0.6B v3. German is the primary language and default; every model must support German.
+- Downloadable int8 models: multilingual Whisper Tiny/Base/Small/Medium/Turbo/Large v3, NVIDIA
+  Parakeet TDT 0.6B v3, Canary 180M Flash, Meta Omnilingual ASR CTC 300M and multilingual
+  Nemotron 3.5 ASR Streaming 0.6B (560 ms). German is the primary language and default; every model must support German.
   English remains optional. Whisper Base remains the default. Keep the
   existing Base/Small IDs and versions compatible with installed models and pending captures.
 - Configure each model family explicitly: Whisper encoder/decoder with `transcribe` and
-  `de`/`en`; Parakeet encoder/decoder/joiner with `nemo_transducer`. Keep one model loaded.
+  `de`/`en` (128 mel bins for Turbo/Large v3); Parakeet encoder/decoder/joiner with
+  `nemo_transducer`; Canary with matching source/target language to transcribe without translation;
+  Omnilingual with its CTC decoder; Nemotron with its streaming transducer and an explicit language
+  option set before each stream's audio. Omnilingual CTC has no forced-language option.
+  Nemotron consumes the same saved VAD segments through bounded PCM chunks, signals end of input
+  and drains the final frames; it does not introduce a separate live-recording mode.
+  Keep one model loaded.
   Model selection preserves the chosen language; reject incompatible selections.
+- Maintain the full German-capable reference list, including available versions/precisions and
+  source links, in [MODEL_CATALOGUE.md](MODEL_CATALOGUE.md). These entries are not all app downloads.
 - Read durable 16 kHz mono PCM16 audio, convert to the pinned runtime's expected samples, run
   Silero VAD and serial model inference on a dedicated dispatcher, never on the main thread.
 - Initial VAD tuning: 250 ms minimum speech, 500 ms minimum silence, 200 ms padding and maximum

@@ -119,9 +119,21 @@ repository (`psyke089/nonara`), where GitHub Actions builds. Point local clones 
   weaken those checks: a per-runner debug key would silently break installs.
 - `tools/install-android-sdk.sh` installs the `android-37` platform and 36/37 build-tools the
   workflow needs.
-- The mirror is authenticated with a Forgejo-generated SSH key added as a GitHub deploy key
-  (write access). It force-pushes (`git push --mirror`), so treat the GitHub copy as disposable:
-  no commits, tags or branches are created there by hand.
+- The mirror is authenticated over HTTPS with a fine-grained GitHub token scoped to
+  `psyke089/nonara` with **Contents** and **Workflows** read-write. An SSH deploy key is not an
+  option: GitHub rejects workflow-file updates from one (`refusing to allow an OAuth App to
+  create or update workflow … without workflow scope`). The token exists only in Codeberg's
+  mirror settings and in the local tea config — never paste it into chat, commits, scripts or
+  logs; set it through `Settings → Repository → Mirror Settings` or a command that reads it
+  with `read -rs`. Rotating it means delete + re-create the mirror (Forgejo 16.0.0-dev has no
+  `PATCH` route for `push_mirrors`), then push once to Codeberg to trigger the first sync.
+- It force-pushes (`git push --mirror`), so treat the GitHub copy as disposable: no commits,
+  tags or branches are created there by hand.
+- A `v*` tag only starts the release run when it reaches GitHub in its own push. If `main` and a
+  tag are mirrored in one atomic push, GitHub creates the branch run only; force the release
+  with `gh workflow run ci.yml --ref v<version>` — a dispatch on a tag ref still matches the
+  `ref_type == 'tag'` guards, so it publishes. `tools/release.sh` pushes `main` and the tag
+  separately, which is the normal path.
 - The mirror runs `sync_on_commit`, so a push to Codeberg triggers both the mirror and the
   workflow; its periodic interval is a safety net only. Codeberg's Forgejo (16.0.0-dev) has no
   `/sync` API route — force a manual run with *Mirror Settings → Synchronize Now*.
