@@ -105,10 +105,7 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
             require(model.ready(size)) { "Install the $size model in Settings, then retry" }
             captures.state(id,"transcribing")
             val folder=model.directory(size)
-            val recognizer=OfflineRecognizer(config=OfflineRecognizerConfig(modelConfig=OfflineModelConfig(
-                whisper=OfflineWhisperModelConfig(encoder=File(folder,"$size-encoder.int8.onnx").path,
-                    decoder=File(folder,"$size-decoder.int8.onnx").path,language=r.getString("language").take(2),task="transcribe"),
-                tokens=File(folder,"$size-tokens.txt").path,numThreads=4)))
+            val recognizer=OfflineRecognizer(config=model.info(size).recognizerConfig(folder,r.getString("language")))
             val vad=Vad(config=VadModelConfig(sileroVadModelConfig=SileroVadModelConfig(
                 model=File(folder,"silero_vad.onnx").path,minSilenceDuration=0.5f,maxSpeechDuration=10f)))
             val texts=mutableListOf<String>(); var segment=0

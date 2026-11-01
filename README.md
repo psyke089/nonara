@@ -4,7 +4,9 @@ A private, local-first note-taking app for Android, built with Kotlin and Jetpac
 
 Nonara keeps notes and speech recognition on the device: no accounts, no analytics and no ads.
 Network access is allowed for downloading speech models; transcription will work offline once
-the required models are installed.
+the required models are installed. German is the primary dictation language. Downloadable
+models include multilingual Whisper Tiny/Base/Small/Medium and Parakeet TDT 0.6B v3;
+all offered models support German, with English available as a secondary language.
 
 ## Status
 

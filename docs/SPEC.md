@@ -468,10 +468,15 @@ ordinary note edit/delete operation, not a way to race an already committed work
 
 - Pin sherpa-onnx Kotlin/JNI and ONNX Runtime versions/ABIs. Validate API 33 and native-library
   packaging on supported devices before adopting a prebuilt distribution.
-- Multilingual int8 Whisper base by default, small optional; no English-only `.en` variant.
-  Explicit transcription task; map `de-DE` / `en-US` to `de` / `en`. Keep one model loaded.
+- Downloadable int8 models: multilingual Whisper Tiny/Base/Small/Medium, NVIDIA Parakeet TDT
+  0.6B v3. German is the primary language and default; every model must support German.
+  English remains optional. Whisper Base remains the default. Keep the
+  existing Base/Small IDs and versions compatible with installed models and pending captures.
+- Configure each model family explicitly: Whisper encoder/decoder with `transcribe` and
+  `de`/`en`; Parakeet encoder/decoder/joiner with `nemo_transducer`. Keep one model loaded.
+  Model selection preserves the chosen language; reject incompatible selections.
 - Read durable 16 kHz mono PCM16 audio, convert to the pinned runtime's expected samples, run
-  Silero VAD and serial Whisper inference on a dedicated dispatcher, never on the main thread.
+  Silero VAD and serial model inference on a dedicated dispatcher, never on the main thread.
 - Initial VAD tuning: 250 ms minimum speech, 500 ms minimum silence, 200 ms padding and maximum
   10-second recognition segments including padding. Force splits during continuous speech,
   flush the final incomplete frame/segment, and avoid duplicated samples at boundaries. Persist
@@ -516,7 +521,7 @@ silently fetched by opening dictation. A fresh install may require connectivity;
 models support offline recognition. Show mode availability and download/installed size first.
 
 Use a pinned catalog with ID/version, runtime compatibility, languages, license/provenance and
-every required file (Whisper encoder/decoder/tokens, Silero VAD and metadata), sizes and SHA-256.
+every required file (family-specific model components, tokens, Silero VAD and metadata), sizes and SHA-256.
 Download over HTTPS into app-private staging, verify all files, then atomically publish a
 complete versioned directory under `filesDir/models/`. A failed install cannot replace a working
 model. Prefer individual files over archive extraction; provide applicable license notices.

@@ -9,10 +9,12 @@ The current code is a functional first implementation, not complete acceptance o
   capture receipts, search, optional titles, copy/share, trash and restoration.
 - Paper/burgundy Compose Home, Editor and Settings with serif headings and grouped note cards.
 - Recording panel with elapsed active time, PCM RMS / Android RMS input meter, explicit microphone
-  state and pause/resume/finish controls. Base/Small model cards show selection, sizes and per-model
+  state and pause/resume/finish controls. Family-specific model cards show selection, sizes and per-model
   installation/download controls. ZIP import/export with path/size bounds.
-- Pinned Sherpa 2.0.1 dependency; base/small multilingual int8 catalog with pinned model revisions,
+- Pinned Sherpa 2.0.1 dependency; Whisper Tiny/Base/Small/Medium, Parakeet v3 int8 catalog with pinned model revisions,
   sizes and SHA-256 checksums; explicit downloads, progress, cancellation and model deletion guards.
+- Family-specific Whisper/Parakeet recognizers, language compatibility guards and
+  model selection preserving the chosen language. Models remain separate explicit downloads.
 - Foreground PCM recording, pause/resume, interruption persistence and manual recovery.
 - WorkManager transcription, Silero VAD, bounded decode segments and cached segment results;
   recognized text is applied once and successful capture audio is cleaned up.
@@ -38,14 +40,16 @@ The current code is a functional first implementation, not complete acceptance o
 
 ## Validation
 
-- JVM regression suite: 13 tests passing (storage/codec plus recording timer pause accounting,
-  signed PCM microphone levels and duration formatting).
+- JVM regression suite: 17 tests passing (storage/codec plus recording timer pause accounting,
+  signed PCM microphone levels, duration formatting and incompatible-language rejection).
 - Debug app and instrumented-test APKs build; lint succeeds with warnings.
 - The downloaded Sherpa AAR matches its upstream SHA-256 release digest. A broad dependency
   checksum-generation scan was cancelled to respect the requested verification budget.
-- Device pass: capture persistence, launch, note editing, Base/Small selection, recording-panel
-  pause/resume/finish, and real PCM microphone feedback pass on the OnePlus 5T. No speech accuracy
-  benchmark or stress pass was run. The redesigned debug app is installed on the phone.
+- Device suite: 12 tests pass on the OnePlus 5T, covering capture persistence, launch, editing,
+  model catalogue metadata, German-preserving Parakeet selection, Base/Small selection,
+  recording-panel controls, landscape navigation and real PCM microphone feedback.
+- Actual new-model decoding remains unverified: model downloads for native inference verification
+  were stopped at the user's request. No accuracy benchmark or stress pass was run.
 
 ## Decisions for later
 

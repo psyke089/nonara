@@ -56,7 +56,7 @@ class AppModel(application:Application):AndroidViewModel(application) {
         viewModelScope.launch { context.preferences.data.collect {
             theme=it[stringPreferencesKey("theme")] ?: "System"
             mode=it[stringPreferencesKey("mode")] ?: "sherpa"
-            language=it[stringPreferencesKey("language")] ?: if(java.util.Locale.getDefault().language=="en") "en-US" else "de-DE"
+            language=it[stringPreferencesKey("language")] ?: "de-DE"
             modelSize=it[stringPreferencesKey("model")] ?: "base"
         } }
         viewModelScope.launch {
@@ -70,6 +70,14 @@ class AppModel(application:Application):AndroidViewModel(application) {
         }
     }
     fun preference(key:String,value:String) { viewModelScope.launch { context.preferences.edit { it[stringPreferencesKey(key)]=value } } }
+    fun selectModel(id: String) = task {
+        val info=models.info(id)
+        context.preferences.edit {
+            it[stringPreferencesKey("model")]=id
+            it[stringPreferencesKey("mode")]="sherpa"
+            it[stringPreferencesKey("language")]=info.languageForSelection(language)
+        }
+    }
     suspend fun refresh() {
         val data=withContext(Dispatchers.IO) { Triple(store.list(),store.list(true),captures.all()) }
         notes=data.first; deleted=data.second; pending=data.third
@@ -107,7 +115,10 @@ class AppModel(application:Application):AndroidViewModel(application) {
     fun restore(note:Note)=task { withContext(Dispatchers.IO) { store.restore(note.id) }; refresh() }
     fun start(caret:Int?)=task {
         require(active==null) { "A capture is already open" }
-        if(mode=="sherpa") require(models.ready(modelSize)) { "Download a speech model in Settings before recording" }
+        if(mode=="sherpa") {
+            require(models.supports(modelSize,language)) { "This model does not support the selected language" }
+            require(models.ready(modelSize)) { "Download a speech model in Settings before recording" }
+        }
         flush(); require(status!="Couldn't save") { "Save the note before recording" }
         val note=editor?.takeIf { it.body.isNotBlank() || it.title!=null }
         val r=withContext(Dispatchers.IO) { captures.create(note,caret,mode,language,modelSize) }
@@ -117,7 +128,7 @@ class AppModel(application:Application):AndroidViewModel(application) {
     private fun begin(r:JSONObject) {
         val id=r.getString("id")
         microphoneLevel=0f
-        captureLabel=(if(r.getString("mode")=="sherpa") "Whisper ${r.getString("model")}" else "Android live") + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
+        captureLabel=(if(r.getString("mode")=="sherpa") models.info(r.getString("model")).name else "Android live") + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
         recordingClock.resume(android.os.SystemClock.elapsedRealtime())
         clockJob?.cancel()
         clockJob=viewModelScope.launch { while(isActive) { elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); delay(100) } }

@@ -25,6 +25,26 @@ class NoteFlowTest {
             compose.runOnIdle { compose.activity.requestedOrientation=previous }
         }
     }
+    @Test fun selectingParakeetPreservesGerman() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val original=Triple(model.modelSize,model.mode,model.language)
+        try {
+            compose.runOnIdle { model.preference("language","de-DE") }
+            compose.waitUntil(5000) { model.language=="de-DE" }
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithTag("model-parakeet-v3").performScrollTo().performClick()
+            compose.waitUntil(5000) { model.modelSize=="parakeet-v3" && model.language=="de-DE" && model.mode=="sherpa" }
+            compose.onNodeWithTag("model-parakeet-v3").assertIsSelected()
+            compose.onNodeWithText("Deutsch",substring=false).performScrollTo().assertIsEnabled().assertIsSelected()
+        } finally {
+            compose.runOnIdle {
+                model.preference("model",original.first)
+                model.preference("mode",original.second)
+                model.preference("language",original.third)
+            }
+            compose.waitUntil(5000) { model.modelSize==original.first && model.mode==original.second && model.language==original.third }
+        }
+    }
     @Test fun speechModelCanBeSelectedForTheNextRecording() {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
         val original=model.modelSize

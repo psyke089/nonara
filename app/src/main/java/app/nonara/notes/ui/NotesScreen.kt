@@ -51,7 +51,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
     fun record() {
         if(model.mode=="sherpa" && model.modelSize !in model.installed) {
             model.page="settings"
-            model.error="Choose and download a speech model before your first recording. You can compare Base and Small below."
+            model.error="Choose and download a speech model before your first recording. Choose a model below."
             return
         }
         if(context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) model.start(if(model.page=="editor") text.selection.end else null)
@@ -74,7 +74,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 item { Column(Modifier.padding(top=22.dp,bottom=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Text("A little room\nfor your thoughts.",style=MaterialTheme.typography.displaySmall,fontFamily=FontFamily.Serif)
                     Text("Write it down. Say it out loud. Keep it here.",color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    SuggestionChip(onClick={model.page="settings"},label={ Text((if(model.mode=="sherpa") "Whisper ${model.modelSize}" else "Android live")+" · "+(if(model.language=="de-DE") "Deutsch" else "English")+"  ›") })
+                    SuggestionChip(onClick={model.page="settings"},label={ Text((if(model.mode=="sherpa") model.models.info(model.modelSize).name else "Android live")+" · "+(if(model.language=="de-DE") "Deutsch" else "English")+"  ›") })
                 } }
                 item { OutlinedTextField(model.query,{model.query=it},label={Text("Search thoughts")},modifier=Modifier.fillMaxWidth().testTag("search"),singleLine=true,shape=RoundedCornerShape(20.dp)) }
                 if(model.notes.isEmpty() && model.pending.isEmpty()) item { Surface(shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surfaceContainerLow,modifier=Modifier.fillMaxWidth().padding(top=24.dp)) {
@@ -124,29 +124,31 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 Text("Your voice, your choice.",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
                 Text("Sherpa saves audio privately until transcription succeeds. Android live mode keeps recognized text only; unfinished speech cannot be retried.")
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.mode=="sherpa",{model.preference("mode","sherpa")},label={Text("Sherpa")}); FilterChip(model.mode=="android",{model.preference("mode","android")},label={Text("Android live")}) }
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},enabled=model.mode=="android" || model.models.supports(model.modelSize,"de-DE"),label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
                 Text("Speech models",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
-                Text("Try the same phrase with each model to compare results. Your selection applies to the next recording.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Choose a model for your next recording. Every model below supports German. Your language stays selected. Downloads stay on this device.",color=MaterialTheme.colorScheme.onSurfaceVariant)
                 model.models.ids().forEach { size ->
-                    val selected=model.modelSize==size
+                    val info=model.models.info(size)
+                    val selected=model.mode=="sherpa" && model.modelSize==size
                     val installed=size in model.installed
                     Surface(shape=RoundedCornerShape(24.dp),color=if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
                         Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment=Alignment.CenterVertically) {
-                                RadioButton(selected=selected,onClick={model.preference("model",size)},modifier=Modifier.testTag("model-$size"))
+                                RadioButton(selected=selected,onClick={model.selectModel(size)},modifier=Modifier.testTag("model-$size"))
                                 Column(Modifier.weight(1f)) {
-                                    Text("Whisper ${size.replaceFirstChar { it.uppercase() }}",style=MaterialTheme.typography.titleLarge)
+                                    Text(info.name,style=MaterialTheme.typography.titleLarge)
                                     Text(if(selected) "Selected for next recording" else "Tap to select",style=MaterialTheme.typography.labelMedium)
                                 }
                             }
-                            Text(if(size=="base") "A lighter model for everyday thoughts." else "A larger model to compare recognition quality. Takes more storage and processing time.")
-                            Text("${model.models.bytes(size)/1024/1024} MiB · Deutsch & English · "+if(installed) "Installed" else "Download required",style=MaterialTheme.typography.labelMedium)
+                            Text(info.description)
+                            Text("${model.models.bytes(size)/1024/1024} MiB · "+"Deutsch & English"+" · "+(if(installed) "Installed" else "Download required"),style=MaterialTheme.typography.labelMedium)
+                            Text(model.models.definition(size).getString("license"),style=MaterialTheme.typography.bodySmall)
                             if(model.downloadingModel==size) {
                                 LinearProgressIndicator(Modifier.fillMaxWidth())
                                 Text(model.downloadStatus,style=MaterialTheme.typography.bodySmall)
                                 TextButton(onClick={model.cancelDownload()}) { Text("Cancel download") }
                             } else if(!installed) {
-                                OutlinedButton(onClick={confirmDownload=size},enabled=!model.downloading) { Text("Download ${size}") }
+                                OutlinedButton(onClick={confirmDownload=size},enabled=!model.downloading) { Text("Download") }
                             } else TextButton(onClick={model.deleteModel(size)}) { Text("Remove download") }
                         }
                     }
@@ -159,8 +161,8 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 OutlinedButton(onClick={import.launch(arrayOf("application/zip","application/octet-stream"))}) { Text("Import notes") }
                 TextButton(onClick={model.page="trash"}) { Text("Trash · retained for 30 days") }
                 Text(model.status)
-                HorizontalDivider(); Text("NONARA 0.2.0\nA place for passing thoughts.")
-                Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
+                HorizontalDivider(); Text("NONARA 0.3.0\nA place for passing thoughts.")
+                Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, Parakeet (NVIDIA) / CC-BY-4.0, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
                 if(model.deleted.isEmpty()) item { Text("Trash is empty") }
@@ -177,6 +179,6 @@ fun NotesScreen(model:AppModel=viewModel()) {
         }
     }
     confirmDiscard?.let { id -> AlertDialog(onDismissRequest={confirmDiscard=null},title={Text("Discard this capture?")},text={Text("Its temporary audio and recognized text will be deleted.")},confirmButton={TextButton(onClick={model.discard(id);confirmDiscard=null}) {Text("Discard")}},dismissButton={TextButton(onClick={confirmDiscard=null}) {Text("Keep")} }) }
-    confirmDownload?.let { size -> AlertDialog(onDismissRequest={confirmDownload=null},title={Text("Download Whisper $size?")},text={Text("${model.models.bytes(size)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=null;model.download(size)}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=null}) {Text("Cancel")} }) }
+    confirmDownload?.let { size -> AlertDialog(onDismissRequest={confirmDownload=null},title={Text("Download ${model.models.info(size).name}?")},text={Text("${model.models.bytes(size)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=null;model.download(size)}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=null}) {Text("Cancel")} }) }
     model.error?.let { message -> AlertDialog(onDismissRequest={model.error=null},title={Text("Needs attention")},text={Text(message)},confirmButton={TextButton(onClick={model.error=null}) {Text("OK")} }) }
 }

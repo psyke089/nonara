@@ -11,6 +11,17 @@ Compile and target SDK 37.
 - [README.md](README.md) — human-facing overview and commands.
 - Remote: `ssh://git@codeberg.org/k4r/nonara.git` (private), default branch `main`.
 
+## Language and speech models
+
+- **German (`de-DE`) is the primary dictation language and the default.** English is optional
+  secondary support; do not infer an English default from the device or UI language.
+- Every selectable speech model must support German. Multilingual models are welcome;
+  do not add English-only models unless the user explicitly requests them.
+- Selecting a model must preserve the chosen dictation language. Reject or disable an
+  incompatible choice instead of silently changing the language.
+- Prioritize German recordings when validating transcription. Keep models as explicit,
+  separate downloads; never bundle them in the APK.
+
 ## Ownership and generation
 
 The user owns the product copy, feature decisions and any assets they provide.

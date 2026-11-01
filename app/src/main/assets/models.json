@@ -1,66 +1,232 @@
 [
   {
-    "id": "base",
-    "version": "bb53ee204431c90d314c1cc08d28d23e5b7927cc",
-    "runtime": "2.0.1",
-    "license": "Whisper: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "id": "tiny",
+    "repo": "csukuangfj/sherpa-onnx-whisper-tiny",
+    "version": "65176e2deb88badc814a94058666cadccc29b61c",
     "files": [
       {
-        "name": "base-decoder.int8.onnx",
-        "size": 130672026,
-        "sha256": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-decoder.int8.onnx"
+        "name": "tiny-encoder.int8.onnx",
+        "size": 12937772,
+        "sha256": "d24fb083ae3b1041fc24e97971d60e280c9342201fbb67b0ab428a8b4a51a434",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-encoder.int8.onnx",
+        "role": "encoder"
       },
       {
-        "name": "base-encoder.int8.onnx",
-        "size": 29120534,
-        "sha256": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx"
+        "name": "tiny-decoder.int8.onnx",
+        "size": 89855401,
+        "sha256": "d2fece8dd42771f1df975c6c0445770d0c292bf7547c2cae04a6c0cc57540925",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-decoder.int8.onnx",
+        "role": "decoder"
       },
       {
-        "name": "base-tokens.txt",
+        "name": "tiny-tokens.txt",
         "size": 816730,
         "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-tokens.txt"
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-tokens.txt",
+        "role": "tokens"
       },
       {
         "name": "silero_vad.onnx",
         "size": 643854,
         "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
-        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
       }
+    ],
+    "runtime": "2.0.1",
+    "name": "Whisper Tiny",
+    "description": "Multilingual Whisper \u00b7 smallest variant.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-tiny",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Whisper Tiny: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0"
+  },
+  {
+    "id": "base",
+    "version": "bb53ee204431c90d314c1cc08d28d23e5b7927cc",
+    "runtime": "2.0.1",
+    "license": "Whisper Base: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "base-decoder.int8.onnx",
+        "size": 130672026,
+        "sha256": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "base-encoder.int8.onnx",
+        "size": 29120534,
+        "sha256": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "base-tokens.txt",
+        "size": 816730,
+        "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ],
+    "name": "Whisper Base",
+    "description": "Multilingual Whisper \u00b7 base variant.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-base",
+    "languages": [
+      "de-DE",
+      "en-US"
     ]
   },
   {
     "id": "small",
     "version": "8f3c18b358db4d1f2fc1eae49d75cd20989e4309",
     "runtime": "2.0.1",
-    "license": "Whisper: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "license": "Whisper Small: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
     "files": [
       {
         "name": "small-decoder.int8.onnx",
         "size": 262226114,
         "sha256": "acad50b5c782696e91b55914cc5ab4f756f1532f76e22aa6fc615f39fb69a8ee",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-decoder.int8.onnx"
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-decoder.int8.onnx",
+        "role": "decoder"
       },
       {
         "name": "small-encoder.int8.onnx",
         "size": 112442483,
         "sha256": "4cbe7b22fa9026b843b60a68640c747de05bafb1a11b57edc0e66c232d9f33a9",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-encoder.int8.onnx"
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-encoder.int8.onnx",
+        "role": "encoder"
       },
       {
         "name": "small-tokens.txt",
         "size": 816730,
         "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
-        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-tokens.txt"
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-small/resolve/8f3c18b358db4d1f2fc1eae49d75cd20989e4309/small-tokens.txt",
+        "role": "tokens"
       },
       {
         "name": "silero_vad.onnx",
         "size": 643854,
         "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
-        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
       }
+    ],
+    "name": "Whisper Small",
+    "description": "Multilingual Whisper \u00b7 small variant.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-small",
+    "languages": [
+      "de-DE",
+      "en-US"
     ]
+  },
+  {
+    "id": "medium",
+    "repo": "csukuangfj/sherpa-onnx-whisper-medium",
+    "version": "8c31d28503847560985df21f90e14f0c736e075e",
+    "files": [
+      {
+        "name": "medium-encoder.int8.onnx",
+        "size": 374196283,
+        "sha256": "1c54582b4d829de0089f6cb63bbbdb3bf7555398bacaf855fbecf1a84dfd193e",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-medium/resolve/8c31d28503847560985df21f90e14f0c736e075e/medium-encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "medium-decoder.int8.onnx",
+        "size": 571059257,
+        "sha256": "595d00a338a365a7bfa0ca7f296cabc639583bef770ab6130df90f49a6412747",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-medium/resolve/8c31d28503847560985df21f90e14f0c736e075e/medium-decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "medium-tokens.txt",
+        "size": 816730,
+        "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-medium/resolve/8c31d28503847560985df21f90e14f0c736e075e/medium-tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ],
+    "runtime": "2.0.1",
+    "name": "Whisper Medium",
+    "description": "Multilingual Whisper \u00b7 medium variant.",
+    "family": "whisper",
+    "source": "https://huggingface.co/openai/whisper-medium",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Whisper Medium: MIT; Silero VAD: MIT; sherpa-onnx: Apache-2.0"
+  },
+  {
+    "id": "parakeet-v3",
+    "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+    "version": "2bda32ec70b097a55adaa07d9a7173915b43cc78",
+    "files": [
+      {
+        "name": "encoder.int8.onnx",
+        "size": 652184281,
+        "sha256": "acfc2b4456377e15d04f0243af540b7fe7c992f8d898d751cf134c3a55fd2247",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "decoder.int8.onnx",
+        "size": 11845275,
+        "sha256": "179e50c43d1a9de79c8a24149a2f9bac6eb5981823f2a2ed88d655b24248db4e",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "joiner.int8.onnx",
+        "size": 6355277,
+        "sha256": "3164c13fc2821009440d20fcb5fdc78bff28b4db2f8d0f0b329101719c0948b3",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/joiner.int8.onnx",
+        "role": "joiner"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 93939,
+        "sha256": "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8/resolve/2bda32ec70b097a55adaa07d9a7173915b43cc78/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ],
+    "runtime": "2.0.1",
+    "name": "Parakeet TDT 0.6B v3",
+    "description": "NVIDIA Parakeet \u00b7 int8 \u00b7 25 European languages.",
+    "family": "parakeet",
+    "source": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Parakeet TDT 0.6B v3: CC-BY-4.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0"
   }
 ]
