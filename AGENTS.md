@@ -134,9 +134,12 @@ repository (`psyke089/nonara`), where GitHub Actions builds. Point local clones 
   with `gh workflow run ci.yml --ref v<version>` — a dispatch on a tag ref still matches the
   `ref_type == 'tag'` guards, so it publishes. `tools/release.sh` pushes `main` and the tag
   separately, which is the normal path.
-- The mirror runs `sync_on_commit`, so a push to Codeberg triggers both the mirror and the
-  workflow; its periodic interval is a safety net only. Codeberg's Forgejo (16.0.0-dev) has no
-  `/sync` API route — force a manual run with *Mirror Settings → Synchronize Now*.
+- The mirror runs `sync_on_commit`, so a push to Codeberg usually triggers both the mirror and the
+  workflow; its periodic interval is a safety net only. It is not reliable: a sync can be skipped
+  with `last_error` empty and a stale `last_update`, leaving GitHub on the old ref. When that
+  happens, push the refs straight to the copy (`git push github main`, `git push github
+  v<version>`) or use *Mirror Settings → Synchronize Now* — Codeberg's Forgejo (16.0.0-dev) has
+  no `/sync` API route. The mirror force-pushes the same refs later, so the detour is harmless.
 - Repository secrets: `NONARA_KEYSTORE_B64` (base64 of the keystore), `NONARA_STORE_PASSWORD`,
   `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Mirror force-pushes never touch secrets.
 
