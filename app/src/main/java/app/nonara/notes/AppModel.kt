@@ -47,7 +47,8 @@ class AppModel(application:Application):AndroidViewModel(application) {
     var downloading by mutableStateOf(false); private set
     var downloadStatus by mutableStateOf(""); private set
     var installed by mutableStateOf(setOf<String>()); private set
-    private var downloadJob: Job?=null
+    private val downloads=ModelDownloads(context)
+    var modelTransfers by mutableStateOf(emptyMap<String,TransferRecord>()); private set
     private var saveJob:Job?=null
         private var revision=System.nanoTime()
     private var editorBase=""
@@ -83,6 +84,7 @@ class AppModel(application:Application):AndroidViewModel(application) {
         notes=data.first; deleted=data.second; pending=data.third
         if(status=="Saved") notes.firstOrNull { it.id==editor?.id && it.body!=editorBase }?.let { editor=it; editorBase=it.body }
         installed=withContext(Dispatchers.IO) { models.ids().filter { models.ready(it) }.toSet() }
+        refreshDownloads()
     }
     fun open(note:Note?=null) { editorBase=note?.body.orEmpty(); revision=System.nanoTime(); editor=note ?: Note.create(); page="editor"; status=if(note==null) "" else "Saved" }
     fun edit(body:String,title:String?=editor?.title) {
@@ -170,20 +172,25 @@ class AppModel(application:Application):AndroidViewModel(application) {
         active=id; paused=false; recordingClock.start(android.os.SystemClock.elapsedRealtime()); begin(r); captures.state(id,"recording")
     }
     fun retry(id:String)=task { withContext(Dispatchers.IO) { captures.enqueue(id) }; refresh() }
-    fun download(size:String=modelSize) {
-        if(downloading) return
-        downloading=true; downloadingModel=size
-        downloadJob=viewModelScope.launch {
-            try { models.install(size) { progress -> viewModelScope.launch { downloadStatus=progress } }; refresh() }
-            catch(e:CancellationException) { downloadStatus="Download cancelled"; throw e }
-            catch(e:Exception) { error=e.message }
-            finally { downloading=false; downloadingModel=null }
-        }
+    private suspend fun refreshDownloads() {
+        val (records,live)=withContext(Dispatchers.IO) { downloads.snapshot() }
+        modelTransfers=records.associateBy { it.model }
+        val current=records.firstOrNull { it.workId in live }
+        downloading=current!=null
+        downloadingModel=current?.model
+        downloadStatus=current?.let { TransferProgress(it.phase,it.bytes,it.total).label()+if(it.message.isBlank()) "" else "\n"+it.message }.orEmpty()
     }
-    fun cancelDownload() { downloadJob?.cancel() }
+    fun download(size:String=modelSize)=task {
+        withContext(Dispatchers.IO) { downloads.start(size) }
+        refreshDownloads()
+    }
+    fun cancelDownload()=task { withContext(Dispatchers.IO) { downloads.cancel() }; refreshDownloads() }
+    fun discardDownload(size:String)=task {
+        withContext(Dispatchers.IO) { downloads.discard(size) }; refreshDownloads()
+    }
     fun deleteModel(size:String=modelSize)=task {
         require(active==null && pending.none { it.optString("model")==size }) { "A capture still needs this model" }
-        withContext(Dispatchers.IO) { models.delete(size) }; refresh()
+        withContext(Dispatchers.IO) { downloads.delete(size) }; refresh()
     }
     fun androidDownload()=task { live.download(language) }
     fun export(uri:Uri)=task {

@@ -13,6 +13,16 @@ The current code is a functional first implementation, not complete acceptance o
   installation/download controls. ZIP import/export with path/size bounds.
 - Pinned Sherpa 2.0.1 dependency; Whisper Tiny/Base/Small/Medium, Parakeet v3 int8 catalog with pinned model revisions,
   sizes and SHA-256 checksums; explicit downloads, progress, cancellation and model deletion guards.
+- Durable, unique foreground WorkManager model downloads with data-sync service declarations,
+  progress notification/Cancel, notification permission handling, and persisted transfer status
+  reconnected in Settings. Cancel keeps partial data; Resume/Retry and explicit Discard are separate.
+- HTTP Range/If-Range resume from actual local lengths, fresh redirect resolution, identity encoding,
+  strict 206 range/size/remote-validator checks and bounded restart recovery for 200/416/changed identity.
+  Per-file catalogue fingerprints prevent mixing revisions. Full SHA-256 verification includes the
+  resumed prefix; verified staged components survive retries and installation remains atomic.
+  Storage checks count remaining bytes plus 32 MiB. OkHttp call cancellation closes the socket
+  during a stalled read; response/file handles close before the writer lock is released.
+  progress is throttled and transient failures use three attempts with exponential 30-second backoff.
 - Family-specific Whisper/Parakeet recognizers, language compatibility guards and
   model selection preserving the chosen language. Models remain separate explicit downloads.
 - Foreground PCM recording, pause/resume, interruption persistence and manual recovery.
@@ -24,8 +34,7 @@ The current code is a functional first implementation, not complete acceptance o
 ## Still required for full spec completion
 
 - Android language readiness via checkRecognitionSupport and richer error/retry classification.
-- Resumable model transfers (current retry starts incomplete files over), full bundled license
-  texts, and newer-device native packaging validation.
+- Full bundled license texts and newer-device native packaging validation.
 - Per-capture undo, confirmed delete-all-data, recovery into a new note after target deletion,
   explicit conflict-copy import UI and export of unsupported/raw files.
 - Durable audio checkpoint sample counts, aggregate duration across pause/resume, deadline-aware
@@ -40,12 +49,23 @@ The current code is a functional first implementation, not complete acceptance o
 
 ## Validation
 
-- JVM regression suite: 17 tests passing (storage/codec plus recording timer pause accounting,
-  signed PCM microphone levels, duration formatting and incompatible-language rejection).
-- Debug app and instrumented-test APKs build; lint succeeds with warnings.
+- Resumable-download verification is local only: deterministic byte fixtures/local HTTP server
+  cover interruption/resume, 206/200/416 handling, invalid/changed ranges and identity, corrupt
+  completed files, full-prefix checksums, fresh redirects, cancellation, reusable component/remaining
+  space accounting and preservation of an existing installation. Durable-journal tests exercise
+  duplicate starts, cancellation and recovery independently of any Activity.
+- No phone/emulator verification, ADB commands, APK installation or real model downloads were
+  performed for this change, as required by [MODEL_DOWNLOADS.md](MODEL_DOWNLOADS.md). Screen-lock,
+  notification denial, process/device restart, OEM power policies and newer Android quotas/timeouts
+  remain unverified on devices. WorkManager scheduling, foreground-service/notification integration
+  and Android stop/restart behavior have not been exercised. WorkManager cannot promise
+  uninterrupted transfers under all policies.
+- JVM regression suite: 42 tests passing: 25 transfer/journal/retry tests plus the existing 17
+  storage/codec, recording timer, microphone level, formatting and language compatibility tests.
+- Debug app, instrumented-test and signed arm64 release (`0.3.1`) APKs build; lint succeeds with warnings.
 - The downloaded Sherpa AAR matches its upstream SHA-256 release digest. A broad dependency
   checksum-generation scan was cancelled to respect the requested verification budget.
-- Device suite: 12 tests pass on the OnePlus 5T, covering capture persistence, launch, editing,
+- Previous device suite (before this download change): 12 tests passed on the OnePlus 5T, covering capture persistence, launch, editing,
   model catalogue metadata, German-preserving Parakeet selection, Base/Small selection,
   recording-panel controls, landscape navigation and real PCM microphone feedback.
 - Actual new-model decoding remains unverified: model downloads for native inference verification

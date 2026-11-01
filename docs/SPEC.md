@@ -1,7 +1,7 @@
 # NONARA — Product & Technical Specification
 
 **Version:** 1.1 (consolidated working specification)  
-**Date:** 2026-10-31  
+**Date:** 2026-11-01\
 **Platform:** Android 13 / API 33 minimum; compile and target SDK 37  
 **Product:** Minimal, text-first note-taking and pocket dictation  
 **Status:** Product and STT specification; performance and visual defaults require validation
@@ -526,9 +526,32 @@ Download over HTTPS into app-private staging, verify all files, then atomically 
 complete versioned directory under `filesDir/models/`. A failed install cannot replace a working
 model. Prefer individual files over archive extraction; provide applicable license notices.
 
-Support cancellation, progress and retry. Resume only if range support/remote identity match;
-otherwise restart the partial file. Handle bad hashes, offline state and disk full explicitly.
-Budget staging/installation space, bound/clean staging and serialize installation/deletion.
+Transfers belong to unique foreground WorkManager work, independent of the Activity/ViewModel,
+with a data-sync progress notification and Cancel action on API 33+. Persist model ID/version,
+catalogue fingerprint, work ID, phase and aggregate bytes. Reopening Settings reconnects to
+queued/downloading, interrupted, verifying, installed or failed work. Request notification
+permission on download; denial hides the drawer notification but never implies completion or
+prevents tracking/cancelling in Settings. Declare foreground-service/data-sync permissions and type.
+
+Keep partial data after cancellation, network failure or process death. Resume/Retry is explicit;
+Cancel never schedules a restart, and Discard partial download explicitly removes staged data.
+Only append an identity-encoded HTTP 206 whose Content-Range starts at the actual local file
+length and matches the pinned total size; use a persisted strong ETag or Last-Modified with
+If-Range when available. Resolve redirects anew on each attempt. A 200 replaces that file;
+416, changed identity or invalid ranges trigger at most one safe restart per file per attempt.
+Bind staged bytes to all pinned URLs/sizes/hashes and verify full size/SHA-256, including the
+resumed prefix, before writing the complete marker and atomically renaming the directory.
+Retain verified files across retries. Budget only remaining bytes plus a 32 MiB safety margin;
+serialize transfers, retry, discard and installation/deletion, and throttle progress updates.
+Transient network/HTTP 408/429/5xx failures get at most three automatic attempts, with exponential
+30-second backoff; checksum, storage and other permanent failures require explicit Retry.
+
+Screen lock, navigation and Activity recreation do not cancel transfers. OS suspension,
+force-stop, Android foreground-service time limits and (on Android 16+) WorkManager job quotas
+can still interrupt/delay work; show recoverable progress without promising uninterrupted
+execution under every device power policy. See [Android long-running workers](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/long-running)
+and [notification permission behavior](https://developer.android.com/develop/ui/compose/notifications/notification-permission).
+
 Show installed versions/storage; refuse deletion while loaded or pinned by pending jobs unless
 the user explicitly discards those jobs. Shared VAD deletion cannot break another installed
 model. Failed model loading revalidates installation and offers repair, not a download loop.

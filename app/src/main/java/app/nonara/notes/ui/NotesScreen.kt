@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +31,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.nonara.notes.AppModel
+import app.nonara.notes.TransferPhase
+import app.nonara.notes.TransferProgress
+import app.nonara.notes.label
 import java.time.*
 import java.time.format.DateTimeFormatter
 
@@ -42,6 +46,18 @@ fun NotesScreen(model:AppModel=viewModel()) {
     LaunchedEffect(model.editor?.body) { if(model.status=="Saved" && text.text!=model.editor?.body) text=TextFieldValue(model.editor?.body.orEmpty()) }
     var confirmDiscard by remember { mutableStateOf<String?>(null) }
     var confirmDownload by remember { mutableStateOf<String?>(null) }
+    var confirmDiscardDownload by remember { mutableStateOf<String?>(null) }
+    var notificationModel by rememberSaveable { mutableStateOf<String?>(null) }
+    var notificationsGranted by remember { mutableStateOf(context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED) }
+    val notifications=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsGranted=granted
+        notificationModel?.let { model.download(it) }
+        notificationModel=null
+    }
+    fun download(size: String) {
+        if(context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED) model.download(size)
+        else { notificationModel=size; notifications.launch(Manifest.permission.POST_NOTIFICATIONS) }
+    }
     val microphone=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if(granted) model.start(if(model.page=="editor") text.selection.end else null)
         else model.error="Microphone permission was denied. You can continue typing, or allow microphone access in Android settings."
@@ -127,10 +143,13 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},enabled=model.mode=="android" || model.models.supports(model.modelSize,"de-DE"),label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
                 Text("Speech models",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
                 Text("Choose a model for your next recording. Every model below supports German. Your language stays selected. Downloads stay on this device.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Downloads can continue with the screen locked. Android power limits may interrupt them; resume saved progress here.",style=MaterialTheme.typography.bodySmall)
+                if(!notificationsGranted) Text("Allow notifications to see download progress and Cancel outside Nonara. If denied, track and cancel downloads here.",style=MaterialTheme.typography.bodySmall)
                 model.models.ids().forEach { size ->
                     val info=model.models.info(size)
                     val selected=model.mode=="sherpa" && model.modelSize==size
                     val installed=size in model.installed
+                    val transfer=model.modelTransfers[size]
                     Surface(shape=RoundedCornerShape(24.dp),color=if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
                         Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment=Alignment.CenterVertically) {
@@ -144,12 +163,20 @@ fun NotesScreen(model:AppModel=viewModel()) {
                             Text("${model.models.bytes(size)/1024/1024} MiB · "+"Deutsch & English"+" · "+(if(installed) "Installed" else "Download required"),style=MaterialTheme.typography.labelMedium)
                             Text(model.models.definition(size).getString("license"),style=MaterialTheme.typography.bodySmall)
                             if(model.downloadingModel==size) {
-                                LinearProgressIndicator(Modifier.fillMaxWidth())
+                                if(transfer?.phase==TransferPhase.VERIFYING) LinearProgressIndicator(Modifier.fillMaxWidth())
+                                else LinearProgressIndicator(progress={ transfer?.let { it.bytes.toFloat()/it.total.coerceAtLeast(1) } ?: 0f },modifier=Modifier.fillMaxWidth())
                                 Text(model.downloadStatus,style=MaterialTheme.typography.bodySmall)
                                 TextButton(onClick={model.cancelDownload()}) { Text("Cancel download") }
                             } else if(!installed) {
-                                OutlinedButton(onClick={confirmDownload=size},enabled=!model.downloading) { Text("Download") }
-                            } else TextButton(onClick={model.deleteModel(size)}) { Text("Remove download") }
+                                transfer?.let {
+                                    Text(TransferProgress(it.phase,it.bytes,it.total).label(),style=MaterialTheme.typography.bodySmall)
+                                    if(it.message.isNotBlank()) Text(it.message,style=MaterialTheme.typography.bodySmall)
+                                }
+                                OutlinedButton(onClick={if(transfer==null) confirmDownload=size else download(size)},enabled=!model.downloading) {
+                                    Text(when(transfer?.phase) { TransferPhase.INTERRUPTED -> "Resume"; TransferPhase.FAILED -> "Retry"; else -> "Download" })
+                                }
+                                if(transfer!=null) TextButton(onClick={confirmDiscardDownload=size},enabled=!model.downloading) { Text("Discard partial download") }
+                            } else TextButton(onClick={model.deleteModel(size)},enabled=!model.downloading) { Text("Remove download") }
                         }
                     }
                 }
@@ -161,7 +188,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 OutlinedButton(onClick={import.launch(arrayOf("application/zip","application/octet-stream"))}) { Text("Import notes") }
                 TextButton(onClick={model.page="trash"}) { Text("Trash · retained for 30 days") }
                 Text(model.status)
-                HorizontalDivider(); Text("NONARA 0.3.0\nA place for passing thoughts.")
+                HorizontalDivider(); Text("NONARA 0.3.1\nA place for passing thoughts.")
                 Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, Parakeet (NVIDIA) / CC-BY-4.0, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
@@ -179,6 +206,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
         }
     }
     confirmDiscard?.let { id -> AlertDialog(onDismissRequest={confirmDiscard=null},title={Text("Discard this capture?")},text={Text("Its temporary audio and recognized text will be deleted.")},confirmButton={TextButton(onClick={model.discard(id);confirmDiscard=null}) {Text("Discard")}},dismissButton={TextButton(onClick={confirmDiscard=null}) {Text("Keep")} }) }
-    confirmDownload?.let { size -> AlertDialog(onDismissRequest={confirmDownload=null},title={Text("Download ${model.models.info(size).name}?")},text={Text("${model.models.bytes(size)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=null;model.download(size)}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=null}) {Text("Cancel")} }) }
+    confirmDownload?.let { size -> AlertDialog(onDismissRequest={confirmDownload=null},title={Text("Download ${model.models.info(size).name}?")},text={Text("${model.models.bytes(size)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=null;download(size)}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=null}) {Text("Cancel")} }) }
+    confirmDiscardDownload?.let { size -> AlertDialog(onDismissRequest={confirmDiscardDownload=null},title={Text("Discard partial download?")},text={Text("Saved download progress for ${model.models.info(size).name} will be deleted. An installed model is kept.")},confirmButton={TextButton(onClick={model.discardDownload(size);confirmDiscardDownload=null}) {Text("Discard")}},dismissButton={TextButton(onClick={confirmDiscardDownload=null}) {Text("Keep")} }) }
     model.error?.let { message -> AlertDialog(onDismissRequest={model.error=null},title={Text("Needs attention")},text={Text(message)},confirmButton={TextButton(onClick={model.error=null}) {Text("OK")} }) }
 }
