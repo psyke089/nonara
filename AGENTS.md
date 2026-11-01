@@ -66,6 +66,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w app.nonara.notes.test/androidx.test.runner.AndroidJUnitRunner
 ./gradlew assembleRelease
+tools/release.sh <version>                # bump, test, build, commit, tag, push
 tools/upload-apk.sh gdrive:nonara
 ```
 
@@ -86,12 +87,19 @@ Release builds:
     `~/.gradle/gradle.properties`; CI supplies the same values from repository secrets.
   - The keystore is `~/.config/nonara/nonara-release.jks` (alias `nonara`, 4096-bit RSA,
     certificate `CN=Nonara`). **Never commit it**, its passwords or `*.jks`/`*.keystore` files.
-    Losing it means existing installs can no longer be updated in place.
+    Back it up: losing it means existing installs can no longer be updated in place. To
+    recreate it (new identity, every install must be removed first):
+    `keytool -genkeypair -keystore nonara-release.jks -storetype PKCS12 -alias nonara -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Nonara, O=Nonara, C=DE"`.
+  - Builds signed with the debug key cannot be updated in place by a `CN=Nonara` APK: uninstall
+    the old package (`adb uninstall app.nonara.notes`) and export notes first.
   - `tools/release.sh <version>` performs the whole ritual: bumps `versionCode`/`versionName`,
     updates the About line, runs tests/lint, builds and checksums the APK, commits, tags
-    `v<version>` and pushes the tag. `--dry-run` stops before committing.
+    `v<version>`, then pushes `main` and the tag to `origin`. It refuses a dirty tree, an
+    existing tag, or a version without the `MAJOR.MINOR.PATCH` shape. `--dry-run` stops before
+    committing and leaves the bump in the tree.
 - `tools/upload-apk.sh [remote:path]` copies the newest release APK and its `.sha256` file to
-  Google Drive with `rclone`, printing the target on success. The default target is
+  Google Drive with `rclone`, printing the target on success. This is an optional extra: GitHub
+  releases are the primary distribution. The default target is
   `gdrive:Nonara/releases`; the folder in use is `gdrive:nonara`. The remote lives outside the
   repo in `~/.config/rclone/rclone.conf` — never commit credentials. Uploads run at upstream
   link speed (~30 KiB/s for a 35 MB APK).
@@ -99,7 +107,8 @@ Release builds:
 ## Continuous integration
 
 The source of truth is Codeberg; a push mirror copies `main` and all tags to the public GitHub
-repository, where GitHub Actions builds.
+repository (`psyke089/nonara`), where GitHub Actions builds. Point local clones at it with
+`git remote add github git@github.com:psyke089/nonara.git`, but keep committing to `origin`.
 
 - `.github/workflows/ci.yml`: a push to `main` runs `testDebugUnitTest` and `lintDebug`; a `v*`
   tag additionally builds the signed release APK, asserts the signer is `CN=Nonara`, writes
@@ -113,6 +122,9 @@ repository, where GitHub Actions builds.
 - The mirror is authenticated with a Forgejo-generated SSH key added as a GitHub deploy key
   (write access). It force-pushes (`git push --mirror`), so treat the GitHub copy as disposable:
   no commits, tags or branches are created there by hand.
+- The mirror runs `sync_on_commit`, so a push to Codeberg triggers both the mirror and the
+  workflow; its periodic interval is a safety net only. Codeberg's Forgejo (16.0.0-dev) has no
+  `/sync` API route — force a manual run with *Mirror Settings → Synchronize Now*.
 - Repository secrets: `NONARA_KEYSTORE_B64` (base64 of the keystore), `NONARA_STORE_PASSWORD`,
   `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Mirror force-pushes never touch secrets.
 
