@@ -7,6 +7,14 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +41,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
     var text by remember(model.editor?.id) { mutableStateOf(TextFieldValue(model.editor?.body.orEmpty())) }
     LaunchedEffect(model.editor?.body) { if(model.status=="Saved" && text.text!=model.editor?.body) text=TextFieldValue(model.editor?.body.orEmpty()) }
     var confirmDiscard by remember { mutableStateOf<String?>(null) }
-    var confirmDownload by remember { mutableStateOf(false) }
+    var confirmDownload by remember { mutableStateOf<String?>(null) }
     val microphone=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if(granted) model.start(if(model.page=="editor") text.selection.end else null)
         else model.error="Microphone permission was denied. You can continue typing, or allow microphone access in Android settings."
@@ -41,6 +49,11 @@ fun NotesScreen(model:AppModel=viewModel()) {
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { it?.let(model::export) }
     val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::import) }
     fun record() {
+        if(model.mode=="sherpa" && model.modelSize !in model.installed) {
+            model.page="settings"
+            model.error="Choose and download a speech model before your first recording. You can compare Base and Small below."
+            return
+        }
         if(context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) model.start(if(model.page=="editor") text.selection.end else null)
         else microphone.launch(Manifest.permission.RECORD_AUDIO)
     }
@@ -48,18 +61,30 @@ fun NotesScreen(model:AppModel=viewModel()) {
         if(model.active!=null) model.error="Finish or cancel the recording first."
         else if(model.page=="editor") model.leave() else model.page="home"
     }
-    Scaffold(topBar={ TopAppBar(title={ Text(if(model.page=="home") "nonara" else model.page.replaceFirstChar { it.uppercase() }) },
+    Scaffold(topBar={ TopAppBar(title={ Text(if(model.page=="home") "nonara" else model.page.replaceFirstChar { it.uppercase() },fontFamily=FontFamily.Serif,style=MaterialTheme.typography.headlineMedium) },
         navigationIcon={ if(model.page!="home") TextButton(onClick={ if(model.page=="editor") model.leave() else model.page="home" }) { Text("Back") } },
         actions={ if(model.page=="home") TextButton(onClick={model.page="settings"}) { Text("Settings") } }) },
-        bottomBar={ if(model.page=="home" || model.page=="editor") Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-            Button(onClick={record()},modifier=Modifier.weight(1f)) { Text("Speak") }
-            if(model.page=="home") OutlinedButton(onClick={model.open()},modifier=Modifier.weight(1f)) { Text("Write") }
+        bottomBar={ if(model.page=="home" || model.page=="editor") Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=12.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            Button(onClick={record()},modifier=Modifier.weight(1f).heightIn(min=56.dp)) { Text("Record a thought") }
+            if(model.page=="home") OutlinedButton(onClick={model.open()},modifier=Modifier.heightIn(min=56.dp)) { Text("Write") }
         } }
     ) { padding ->
         when(model.page) {
             "home" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                item { OutlinedTextField(model.query,{model.query=it},label={Text("Search thoughts")},modifier=Modifier.fillMaxWidth().testTag("search"),singleLine=true) }
-                if(model.notes.isEmpty() && model.pending.isEmpty()) item { Column(Modifier.padding(vertical=48.dp)) { Text("No notes yet",style=MaterialTheme.typography.headlineSmall); Text("Notes you write will appear here."); Text("What's on your mind?",Modifier.padding(top=20.dp)) } }
+                item { Column(Modifier.padding(top=22.dp,bottom=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Text("A little room\nfor your thoughts.",style=MaterialTheme.typography.displaySmall,fontFamily=FontFamily.Serif)
+                    Text("Write it down. Say it out loud. Keep it here.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                    SuggestionChip(onClick={model.page="settings"},label={ Text((if(model.mode=="sherpa") "Whisper ${model.modelSize}" else "Android live")+" · "+(if(model.language=="de-DE") "Deutsch" else "English")+"  ›") })
+                } }
+                item { OutlinedTextField(model.query,{model.query=it},label={Text("Search thoughts")},modifier=Modifier.fillMaxWidth().testTag("search"),singleLine=true,shape=RoundedCornerShape(20.dp)) }
+                if(model.notes.isEmpty() && model.pending.isEmpty()) item { Surface(shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surfaceContainerLow,modifier=Modifier.fillMaxWidth().padding(top=24.dp)) {
+                    Column(Modifier.padding(28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                        Text("✦",style=MaterialTheme.typography.displayMedium,color=MaterialTheme.colorScheme.primary)
+                        Text("No notes yet",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
+                        Text("Notes you write will appear here.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("What’s on your mind?",style=MaterialTheme.typography.titleMedium)
+                    }
+                } }
                 items(model.pending,key={it.getString("id")}) { capture ->
                     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) {
                         Text("Dictation · ${capture.getString("state")}")
@@ -74,33 +99,58 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 val groups=filtered.groupBy { val date=it.updatedAt.atZone(ZoneId.systemDefault()).toLocalDate(); when(date) { LocalDate.now()->"Today"; LocalDate.now().minusDays(1)->"Yesterday"; else->"Earlier" } }
                 groups.forEach { (group,notes) ->
                     item { Text(group,style=MaterialTheme.typography.labelLarge,modifier=Modifier.padding(top=12.dp)) }
-                    items(notes,key={it.id}) { note -> Card(onClick={model.open(note)},modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
-                        Column(Modifier.padding(16.dp)) { Text(note.displayTitle,style=MaterialTheme.typography.titleMedium,maxLines=2)
-                            Text(note.body,maxLines=3); Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),style=MaterialTheme.typography.labelSmall) }
+                    items(notes,key={it.id}) { note -> Card(onClick={model.open(note)},shape=RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow),modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
+                        Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) { Text(note.displayTitle,style=MaterialTheme.typography.titleMedium,maxLines=2)
+                            Text(note.body,maxLines=3,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant); Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),style=MaterialTheme.typography.labelSmall) }
                     } }
                 }
                 item { TextButton(onClick={model.undoDelete()}) { Text("Undo last deletion") }; if(model.status.isNotBlank()) Text(model.status) }
             }
             "editor" -> Column(Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
-                OutlinedTextField(model.editor?.title.orEmpty(),{model.edit(text.text,it)},label={Text("Title (optional)")},modifier=Modifier.fillMaxWidth())
+                TextField(model.editor?.title.orEmpty(),{model.edit(text.text,it)},placeholder={Text("Untitled thought")},textStyle=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif),
+                    colors=TextFieldDefaults.colors(focusedContainerColor=MaterialTheme.colorScheme.background,unfocusedContainerColor=MaterialTheme.colorScheme.background),modifier=Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-                OutlinedTextField(text,{text=it;model.edit(it.text)},label={Text("Your thought")},modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=280.dp))
+                OutlinedTextField(text,{text=it;model.edit(it.text)},placeholder={Text("Let your thoughts wander…")},shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=280.dp))
                 Text(model.status,style=MaterialTheme.typography.labelSmall)
                 Row { TextButton(onClick={clipboard.setText(AnnotatedString(text.text))}) { Text("Copy") }
                     TextButton(onClick={ context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type="text/plain"; putExtra(Intent.EXTRA_TEXT,text.text) },"Share thought")) }) { Text("Share") }
                     TextButton(onClick={model.editor?.let(model::trash)}) { Text("Delete") } }
             }
             "settings" -> Column(Modifier.fillMaxSize().padding(padding).padding(20.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                Text("Appearance",style=MaterialTheme.typography.titleLarge)
-                Row { listOf("System","Light","Dark").forEach { label -> FilterChip(selected=model.theme==label,onClick={model.preference("theme",label)},label={Text(label)}) } }
-                Text("Dictation",style=MaterialTheme.typography.titleLarge)
+                Text("Make it yours.",style=MaterialTheme.typography.displaySmall,fontFamily=FontFamily.Serif)
+                Text("Appearance",style=MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { listOf("System","Light","Dark").forEach { label -> FilterChip(selected=model.theme==label,onClick={model.preference("theme",label)},label={Text(label)}) } }
+                HorizontalDivider()
+                Text("Your voice, your choice.",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
                 Text("Sherpa saves audio privately until transcription succeeds. Android live mode keeps recognized text only; unfinished speech cannot be retried.")
-                Row { FilterChip(model.mode=="sherpa",{model.preference("mode","sherpa")},label={Text("Sherpa")}); FilterChip(model.mode=="android",{model.preference("mode","android")},label={Text("Android live")}) }
-                Row { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
-                Row { listOf("base","small").forEach { size -> FilterChip(model.modelSize==size,{model.preference("model",size)},label={Text(size)}) } }
-                Text(if(model.modelSize in model.installed) "Model installed · ready offline" else "Model required · ${model.models.bytes(model.modelSize)/1024/1024} MiB download")
-                if(model.downloading) { Text(model.downloadStatus); TextButton(onClick={model.cancelDownload()}) { Text("Cancel download") } }
-                else Row { Button(onClick={confirmDownload=true},enabled=model.modelSize !in model.installed) { Text("Download model") }; TextButton(onClick={model.deleteModel()}) { Text("Delete model") } }
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.mode=="sherpa",{model.preference("mode","sherpa")},label={Text("Sherpa")}); FilterChip(model.mode=="android",{model.preference("mode","android")},label={Text("Android live")}) }
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
+                Text("Speech models",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
+                Text("Try the same phrase with each model to compare results. Your selection applies to the next recording.",color=MaterialTheme.colorScheme.onSurfaceVariant)
+                model.models.ids().forEach { size ->
+                    val selected=model.modelSize==size
+                    val installed=size in model.installed
+                    Surface(shape=RoundedCornerShape(24.dp),color=if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Column(Modifier.fillMaxWidth().padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                            Row(verticalAlignment=Alignment.CenterVertically) {
+                                RadioButton(selected=selected,onClick={model.preference("model",size)},modifier=Modifier.testTag("model-$size"))
+                                Column(Modifier.weight(1f)) {
+                                    Text("Whisper ${size.replaceFirstChar { it.uppercase() }}",style=MaterialTheme.typography.titleLarge)
+                                    Text(if(selected) "Selected for next recording" else "Tap to select",style=MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                            Text(if(size=="base") "A lighter model for everyday thoughts." else "A larger model to compare recognition quality. Takes more storage and processing time.")
+                            Text("${model.models.bytes(size)/1024/1024} MiB · Deutsch & English · "+if(installed) "Installed" else "Download required",style=MaterialTheme.typography.labelMedium)
+                            if(model.downloadingModel==size) {
+                                LinearProgressIndicator(Modifier.fillMaxWidth())
+                                Text(model.downloadStatus,style=MaterialTheme.typography.bodySmall)
+                                TextButton(onClick={model.cancelDownload()}) { Text("Cancel download") }
+                            } else if(!installed) {
+                                OutlinedButton(onClick={confirmDownload=size},enabled=!model.downloading) { Text("Download ${size}") }
+                            } else TextButton(onClick={model.deleteModel(size)}) { Text("Remove download") }
+                        }
+                    }
+                }
                 TextButton(onClick={model.androidDownload()}) { Text("Request Android language pack") }
                 HorizontalDivider()
                 Text("Privacy & data",style=MaterialTheme.typography.titleLarge)
@@ -109,7 +159,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 OutlinedButton(onClick={import.launch(arrayOf("application/zip","application/octet-stream"))}) { Text("Import notes") }
                 TextButton(onClick={model.page="trash"}) { Text("Trash · retained for 30 days") }
                 Text(model.status)
-                HorizontalDivider(); Text("NONARA 0.1.0\nA place for passing thoughts.")
+                HorizontalDivider(); Text("NONARA 0.2.0\nA place for passing thoughts.")
                 Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
@@ -118,10 +168,15 @@ fun NotesScreen(model:AppModel=viewModel()) {
             }
         }
     }
-    if(model.active!=null) AlertDialog(onDismissRequest={},title={Text(if(model.paused) "Paused" else "Listening")},text={Column { Text("Your recording stays on this device."); Text(model.preview); if(model.busyCapture) Text("Finishing current speech…") }},
-        confirmButton={TextButton(onClick={model.finish()},enabled=!model.busyCapture) {Text("Finish")}},
-        dismissButton={Row { TextButton(onClick={model.togglePause()},enabled=!model.busyCapture) {Text(if(model.paused) "Resume" else "Pause")}; TextButton(onClick={confirmDiscard=model.active},enabled=!model.busyCapture) {Text("Cancel")} } })
+    if(model.active!=null) Dialog(onDismissRequest={},properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        Box(Modifier.fillMaxWidth().padding(16.dp),contentAlignment=Alignment.Center) {
+            Box(Modifier.widthIn(max=520.dp)) {
+                RecordingPanel(model.paused,model.busyCapture,model.elapsedMillis,model.microphoneLevel,model.captureLabel,model.preview,
+                    onPause={model.togglePause()},onFinish={model.finish()},onDiscard={confirmDiscard=model.active})
+            }
+        }
+    }
     confirmDiscard?.let { id -> AlertDialog(onDismissRequest={confirmDiscard=null},title={Text("Discard this capture?")},text={Text("Its temporary audio and recognized text will be deleted.")},confirmButton={TextButton(onClick={model.discard(id);confirmDiscard=null}) {Text("Discard")}},dismissButton={TextButton(onClick={confirmDiscard=null}) {Text("Keep")} }) }
-    if(confirmDownload) AlertDialog(onDismissRequest={confirmDownload=false},title={Text("Download ${model.modelSize}?")},text={Text("${model.models.bytes(model.modelSize)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=false;model.download()}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=false}) {Text("Cancel")} })
+    confirmDownload?.let { size -> AlertDialog(onDismissRequest={confirmDownload=null},title={Text("Download Whisper $size?")},text={Text("${model.models.bytes(size)/1024/1024} MiB over your current connection. Recognition works offline after installation.")},confirmButton={TextButton(onClick={confirmDownload=null;model.download(size)}) {Text("Download")}},dismissButton={TextButton(onClick={confirmDownload=null}) {Text("Cancel")} }) }
     model.error?.let { message -> AlertDialog(onDismissRequest={model.error=null},title={Text("Needs attention")},text={Text(message)},confirmButton={TextButton(onClick={model.error=null}) {Text("OK")} }) }
 }

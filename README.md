@@ -29,11 +29,17 @@ The [product and technical specification](docs/SPEC.md) remains the target. See
 ./gradlew lintDebug assembleDebug        # lint + debug APK
 ./gradlew assembleDebugAndroidTest       # instrumented test APK
 ./gradlew installDebug                   # install on the attached device
+./gradlew assembleRelease                # release APK, debug-signed
+tools/upload-apk.sh                      # newest release APK -> Google Drive (rclone)
 
 adb shell am instrument -w app.nonara.notes.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`; the release APK to
+`app/build/outputs/apk/release/nonara-<version>.apk` (arm64-v8a, signed with the debug key like
+every other build). `tools/upload-apk.sh` copies the newest release APK plus its SHA-256 to a
+Google Drive remote and needs a one-time `rclone config` setup; credentials stay in
+`~/.config/rclone/rclone.conf`, never in the repo.
 
 ## Layout
 

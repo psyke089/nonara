@@ -11,6 +11,36 @@ import org.junit.Assert.*
 @RunWith(AndroidJUnit4::class)
 class NoteFlowTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
+    @Test fun landscapeKeepsWritingAndModelSelectionReachable() {
+        val previous=compose.activity.requestedOrientation
+        try {
+            compose.runOnIdle { compose.activity.requestedOrientation=android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+            compose.waitUntil(5000) { compose.activity.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+            compose.onNodeWithText("Write",substring=false).assertIsDisplayed()
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithTag("model-small").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("Back",substring=false).performClick()
+            compose.onNodeWithTag("search").assertExists()
+        } finally {
+            compose.runOnIdle { compose.activity.requestedOrientation=previous }
+        }
+    }
+    @Test fun speechModelCanBeSelectedForTheNextRecording() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val original=model.modelSize
+        try {
+            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithTag("model-small").performScrollTo().performClick()
+            compose.waitUntil(5000) { model.modelSize=="small" }
+            compose.onNodeWithTag("model-small").assertIsSelected()
+            compose.onNodeWithTag("model-base").performScrollTo().performClick()
+            compose.waitUntil(5000) { model.modelSize=="base" }
+            compose.onNodeWithTag("model-base").assertIsSelected()
+        } finally {
+            compose.runOnIdle { model.preference("model",original) }
+            compose.waitUntil(5000) { model.modelSize==original }
+        }
+    }
     @Test fun typedThoughtPersistsAndCanBeFoundAgain() {
         val text="Nonara UI regression ${newId()}"
         val store=Stores.notes(compose.activity)

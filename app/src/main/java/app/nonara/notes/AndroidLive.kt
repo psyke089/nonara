@@ -24,7 +24,7 @@ class AndroidLive(private val context: Context, private val scope: CoroutineScop
         val r=SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
         r.triggerModelDownload(intent(language)); r.destroy()
     }
-    fun start(language:String,onPartial:(String)->Unit,onFinal:suspend (String)->Unit,onError:(String)->Unit) {
+    fun start(language:String,onPartial:(String)->Unit,onFinal:suspend (String)->Unit,onError:(String)->Unit,onLevel:(Float)->Unit = {}) {
         require(available()) { "Android on-device recognition is unavailable. Use Sherpa recording." }
         running=true; val token=++generation; var failures=0
         val r=SpeechRecognizer.createOnDeviceSpeechRecognizer(context); recognizer=r
@@ -33,7 +33,7 @@ class AndroidLive(private val context: Context, private val scope: CoroutineScop
         r.setRecognitionListener(object: RecognitionListener {
             override fun onReadyForSpeech(params:Bundle?) {}
             override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB:Float) {}
+            override fun onRmsChanged(rmsdB:Float) { if(running && token==generation) onLevel((rmsdB / 10f).coerceIn(0f,1f)) }
             override fun onBufferReceived(buffer:ByteArray?) {}
             override fun onEndOfSpeech() {}
             override fun onEvent(eventType:Int,params:Bundle?) {}

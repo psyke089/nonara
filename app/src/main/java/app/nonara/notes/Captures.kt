@@ -58,7 +58,7 @@ class PcmRecorder(private val context: Context, private val scope: CoroutineScop
     private var job: Job?=null
     @Volatile private var active=false
     @android.annotation.SuppressLint("MissingPermission")
-    fun start(id: String, onError:(String)->Unit) {
+    fun start(id: String, onLevel:(Float)->Unit = {}, onError:(String)->Unit) {
         check(mic==null)
         val size=maxOf(4096,AudioRecord.getMinBufferSize(16000,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT))
         val recorder=AudioRecord(MediaRecorder.AudioSource.MIC,16000,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,size)
@@ -75,6 +75,7 @@ class PcmRecorder(private val context: Context, private val scope: CoroutineScop
                         check(n>0) { "Microphone interrupted" }
                         require(captures.root.walkTopDown().filter { it.isFile }.sumOf { it.length() } < 256L*1024*1024) { "Pending recordings reached storage limit" }
                         require(file.usableSpace>16*1024*1024) { "Storage is full" }
+                        withContext(Dispatchers.Main) { onLevel(microphoneLevel(buffer,n)) }
                         out.write(buffer,0,n); checkpoint+=n
                         if(checkpoint>=32000) { out.fd.sync(); checkpoint=0 }
                         require(file.length()<30L*60*32000) { "Recording reached 30 minutes" }

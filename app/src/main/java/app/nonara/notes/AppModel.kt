@@ -38,6 +38,12 @@ class AppModel(application:Application):AndroidViewModel(application) {
     var paused by mutableStateOf(false); private set
     var busyCapture by mutableStateOf(false); private set
     var preview by mutableStateOf(""); private set
+    var microphoneLevel by mutableStateOf(0f); private set
+    var elapsedMillis by mutableStateOf(0L); private set
+    var captureLabel by mutableStateOf(""); private set
+    private val recordingClock = RecordingClock()
+    private var clockJob: Job? = null
+    var downloadingModel by mutableStateOf<String?>(null); private set
     var downloading by mutableStateOf(false); private set
     var downloadStatus by mutableStateOf(""); private set
     var installed by mutableStateOf(setOf<String>()); private set
@@ -68,7 +74,7 @@ class AppModel(application:Application):AndroidViewModel(application) {
         val data=withContext(Dispatchers.IO) { Triple(store.list(),store.list(true),captures.all()) }
         notes=data.first; deleted=data.second; pending=data.third
         if(status=="Saved") notes.firstOrNull { it.id==editor?.id && it.body!=editorBase }?.let { editor=it; editorBase=it.body }
-        installed=withContext(Dispatchers.IO) { setOf("base","small").filter { models.ready(it) }.toSet() }
+        installed=withContext(Dispatchers.IO) { models.ids().filter { models.ready(it) }.toSet() }
     }
     fun open(note:Note?=null) { editorBase=note?.body.orEmpty(); revision=System.nanoTime(); editor=note ?: Note.create(); page="editor"; status=if(note==null) "" else "Saved" }
     fun edit(body:String,title:String?=editor?.title) {
@@ -105,55 +111,68 @@ class AppModel(application:Application):AndroidViewModel(application) {
         flush(); require(status!="Couldn't save") { "Save the note before recording" }
         val note=editor?.takeIf { it.body.isNotBlank() || it.title!=null }
         val r=withContext(Dispatchers.IO) { captures.create(note,caret,mode,language,modelSize) }
-        active=r.getString("id"); paused=false; preview=""
+        active=r.getString("id"); paused=false; preview=""; recordingClock.start(android.os.SystemClock.elapsedRealtime())
         begin(r)
     }
     private fun begin(r:JSONObject) {
         val id=r.getString("id")
-        if(r.getString("mode")=="sherpa") recorder.start(id) { message -> error=message; viewModelScope.launch { pause(true) } }
+        microphoneLevel=0f
+        captureLabel=(if(r.getString("mode")=="sherpa") "Whisper ${r.getString("model")}" else "Android live") + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
+        recordingClock.resume(android.os.SystemClock.elapsedRealtime())
+        clockJob?.cancel()
+        clockJob=viewModelScope.launch { while(isActive) { elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); delay(100) } }
+        try {
+        if(r.getString("mode")=="sherpa") recorder.start(id, { microphoneLevel=it }) { message -> error=message; viewModelScope.launch { pause(true) } }
         else live.start(r.getString("language"),{ preview=it },{ text ->
             withContext(Dispatchers.IO) { synchronized(Stores.captureLock) {
                 val fresh=captures.read(id); fresh.put("text",(fresh.optString("text")+" "+text).trim()); captures.write(fresh)
             } }; preview=captures.read(id).optString("text")
-        },{ message -> error=message; viewModelScope.launch { pause(true) } })
+        },{ message -> error=message; viewModelScope.launch { pause(true) } },{ microphoneLevel=it })
+        } catch(e:Exception) {
+            recorder.release(); live.release()
+            recordingClock.pause(android.os.SystemClock.elapsedRealtime())
+            clockJob?.cancel(); microphoneLevel=0f; paused=true
+            captures.state(id,"interrupted",e.message ?: "Microphone unavailable")
+            throw e
+        }
     }
     suspend fun pause(interrupted:Boolean=false) {
         if(busyCapture || active==null) return
         busyCapture=true
-        try { recorder.stop(); live.stop(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true }
+        try { recorder.stop(); live.stop(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true; recordingClock.pause(android.os.SystemClock.elapsedRealtime()); clockJob?.cancel(); elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); microphoneLevel=0f }
         finally { busyCapture=false }
     }
     fun togglePause()=task { if(paused) { val r=captures.read(active!!); captures.state(active!!,"recording"); begin(r); paused=false } else pause() }
     fun finish()=task {
         val id=active ?: return@task; busyCapture=true
-        try { recorder.stop(); live.stop(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; preview=""; refresh() }
+        try { recorder.stop(); live.stop(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f; preview=""; refresh() }
         finally { busyCapture=false }
     }
     fun discard(id:String)=task {
-        if(active==id) { recorder.stop(); live.stop(); active=null; paused=false }
+        if(active==id) { recorder.stop(); live.stop(); active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f }
         withContext(Dispatchers.IO) { captures.discard(id) }; refresh()
     }
     fun resume(id:String)=task {
         require(active==null) { "Finish the current recording first" }
         val r=withContext(Dispatchers.IO) { captures.read(id) }
         require(r.getString("state") in listOf("paused","interrupted"))
-        active=id; paused=false; begin(r); captures.state(id,"recording")
+        active=id; paused=false; recordingClock.start(android.os.SystemClock.elapsedRealtime()); begin(r); captures.state(id,"recording")
     }
     fun retry(id:String)=task { withContext(Dispatchers.IO) { captures.enqueue(id) }; refresh() }
-    fun download() {
+    fun download(size:String=modelSize) {
         if(downloading) return
-        val size=modelSize; downloading=true
+        downloading=true; downloadingModel=size
         downloadJob=viewModelScope.launch {
             try { models.install(size) { progress -> viewModelScope.launch { downloadStatus=progress } }; refresh() }
             catch(e:CancellationException) { downloadStatus="Download cancelled"; throw e }
             catch(e:Exception) { error=e.message }
-            finally { downloading=false }
+            finally { downloading=false; downloadingModel=null }
         }
     }
     fun cancelDownload() { downloadJob?.cancel() }
-    fun deleteModel()=task {
-        require(active==null && pending.none { it.optString("model")==modelSize }) { "A capture still needs this model" }
-        withContext(Dispatchers.IO) { models.delete(modelSize) }; refresh()
+    fun deleteModel(size:String=modelSize)=task {
+        require(active==null && pending.none { it.optString("model")==size }) { "A capture still needs this model" }
+        withContext(Dispatchers.IO) { models.delete(size) }; refresh()
     }
     fun androidDownload()=task { live.download(language) }
     fun export(uri:Uri)=task {
@@ -181,5 +200,5 @@ class AppModel(application:Application):AndroidViewModel(application) {
         }; status=summary; refresh()
     }
     fun task(block:suspend ()->Unit) { viewModelScope.launch { try { block() } catch(e:CancellationException) { throw e } catch(e:Exception) { error=e.message ?: "Operation failed" } } }
-    override fun onCleared() { recorder.release(); live.release(); super.onCleared() }
+    override fun onCleared() { clockJob?.cancel(); recorder.release(); live.release(); super.onCleared() }
 }

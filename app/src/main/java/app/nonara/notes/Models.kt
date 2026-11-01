@@ -13,6 +13,7 @@ import java.security.MessageDigest
 
 class Models(private val context: Context) {
     private val catalog get() = JSONArray(context.assets.open("models.json").bufferedReader().use { it.readText() })
+    fun ids(): List<String> { val entries=catalog; return (0 until entries.length()).map { entries.getJSONObject(it).getString("id") } }
     fun definition(size: String) = (0 until catalog.length()).map { catalog.getJSONObject(it) }.first { it.getString("id") == size }
     fun directory(size: String) = File(context.filesDir,"models/$size-${definition(size).getString("version")}")
     fun ready(size: String) = File(directory(size),"complete").exists()

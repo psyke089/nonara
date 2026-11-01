@@ -3,8 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-val nonaraVersionCode = 1
-val nonaraVersionName = "0.1.0"
+val nonaraVersionCode = 2
+val nonaraVersionName = "0.2.0"
 
 android {
     namespace = "app.nonara.notes"
@@ -24,9 +24,18 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             optimization {
                 enable = false
             }
+            ndk {
+                abiFilters += setOf("arm64-v8a")
+            }
+        }
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
     compileOptions {

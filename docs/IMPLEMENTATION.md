@@ -7,7 +7,10 @@ The current code is a functional first implementation, not complete acceptance o
 - API 33 minimum, network/microphone declarations and backup/transfer exclusion rules.
 - Markdown/YAML note codec, UUIDv7 IDs, atomic writes, draft recovery, stale-save protection,
   capture receipts, search, optional titles, copy/share, trash and restoration.
-- Compose Home, Editor, Settings, recording dialog, themes, ZIP import/export with path/size bounds.
+- Paper/burgundy Compose Home, Editor and Settings with serif headings and grouped note cards.
+- Recording panel with elapsed active time, PCM RMS / Android RMS input meter, explicit microphone
+  state and pause/resume/finish controls. Base/Small model cards show selection, sizes and per-model
+  installation/download controls. ZIP import/export with path/size bounds.
 - Pinned Sherpa 2.0.1 dependency; base/small multilingual int8 catalog with pinned model revisions,
   sizes and SHA-256 checksums; explicit downloads, progress, cancellation and model deletion guards.
 - Foreground PCM recording, pause/resume, interruption persistence and manual recovery.
@@ -27,7 +30,7 @@ The current code is a functional first implementation, not complete acceptance o
   background job continuation, bounded automatic retries and complete race/crash fault injection.
 - Stronger reconciliation of simultaneous editor changes/transcript commits; current conflicts
   stop a stale save and retain the draft in the editor for copying rather than merging it.
-- Product polish: waveform/levels, accessibility/landscape review, translated interface copy,
+- Product polish: broader accessibility/landscape review, translated interface copy,
   in-app supplied brand artwork, and preservation of Home scroll position.
 - Full speech recognition testing and base/small performance/accuracy measurements on the OnePlus
   5T. The models have not been downloaded to the phone or benchmarked. German/English corpus,
@@ -35,14 +38,14 @@ The current code is a functional first implementation, not complete acceptance o
 
 ## Validation
 
-- JVM regression suite: 10 tests passing (codec, Unicode/CRLF, invalid input, atomic storage,
-  recovery, stale saves, trash and idempotent insertion).
+- JVM regression suite: 13 tests passing (storage/codec plus recording timer pause accounting,
+  signed PCM microphone levels and duration formatting).
 - Debug app and instrumented-test APKs build; lint succeeds with warnings.
 - The downloaded Sherpa AAR matches its upstream SHA-256 release digest. A broad dependency
   checksum-generation scan was cancelled to respect the requested verification budget.
-- Device pass: three capture-persistence tests and the launch smoke test passed. The note-editing
-  flow passed after correcting its navigation/search test selectors. No speech benchmark or
-  stress pass was run. The debug app is installed on the connected OnePlus 5T.
+- Device pass: capture persistence, launch, note editing, Base/Small selection, recording-panel
+  pause/resume/finish, and real PCM microphone feedback pass on the OnePlus 5T. No speech accuracy
+  benchmark or stress pass was run. The redesigned debug app is installed on the phone.
 
 ## Decisions for later
 

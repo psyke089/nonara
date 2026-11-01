@@ -54,10 +54,27 @@ Run the whole relevant suite before handing work back. New wiring, copies, mock 
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w app.nonara.notes.test/androidx.test.runner.AndroidJUnitRunner
+./gradlew assembleRelease
+tools/upload-apk.sh gdrive:nonara
 ```
 
-`./gradlew installDebug` is equivalent to the first install step. Releases are debug-signed; the
-project has no release signing configuration and no store publication target.
+`./gradlew installDebug` is equivalent to the first install step.
+
+Release builds:
+
+- `versionCode` and `versionName` are declared at the top of `app/build.gradle.kts`. Bump both,
+  and the hardcoded `NONARA <version>` line in the Settings footer of
+  `app/src/main/java/app/nonara/notes/ui/NotesScreen.kt`.
+- `./gradlew assembleRelease` writes `app/build/outputs/apk/release/nonara-<version>.apk`
+  (arm64-v8a only). It is signed with the debug key through
+  `signingConfig = signingConfigs.getByName("debug")`; without that line the release APK is
+  unsigned and cannot be installed. There is no release keystore and no store publication
+  target.
+- `tools/upload-apk.sh [remote:path]` copies the newest release APK and its `.sha256` file to
+  Google Drive with `rclone`, printing the target on success. The default target is
+  `gdrive:Nonara/releases`; the folder in use is `gdrive:nonara`. The remote lives outside the
+  repo in `~/.config/rclone/rclone.conf` — never commit credentials. Uploads run at upstream
+  link speed (~30 KiB/s for a 35 MB APK).
 
 ## Device testing
 

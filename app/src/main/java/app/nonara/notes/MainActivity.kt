@@ -7,6 +7,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.runtime.SideEffect
+import androidx.compose.material3.MaterialTheme
 import app.nonara.notes.ui.NotesScreen
 import app.nonara.notes.ui.theme.NonaraTheme
 import app.nonara.notes.ui.theme.Paper
@@ -22,6 +25,11 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             NonaraTheme(model.theme) {
+                val dark=MaterialTheme.colorScheme.background.luminance()<0.5f
+                SideEffect {
+                    val style=if(dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT,Paper.toArgb())
+                    enableEdgeToEdge(statusBarStyle=style,navigationBarStyle=style)
+                }
                 NotesScreen(model)
             }
         }
