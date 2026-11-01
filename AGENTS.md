@@ -77,15 +77,44 @@ Release builds:
   and the hardcoded `NONARA <version>` line in the Settings footer of
   `app/src/main/java/app/nonara/notes/ui/NotesScreen.kt`.
 - `./gradlew assembleRelease` writes `app/build/outputs/apk/release/nonara-<version>.apk`
-  (arm64-v8a only). It is signed with the debug key through
-  `signingConfig = signingConfigs.getByName("debug")`; without that line the release APK is
-  unsigned and cannot be installed. There is no release keystore and no store publication
-  target.
+  (arm64-v8a only). It is signed with the dedicated release key when one is configured, and
+  falls back to debug signing otherwise so a contributor checkout still produces an installable
+  APK.
+  - Signing values come from Gradle properties `nonara.storeFile`, `nonara.storePassword`,
+    `nonara.keyAlias`, `nonara.keyPassword`, or the env vars `NONARA_STORE_FILE`,
+    `NONARA_STORE_PASSWORD`, `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Locally they live in
+    `~/.gradle/gradle.properties`; CI supplies the same values from repository secrets.
+  - The keystore is `~/.config/nonara/nonara-release.jks` (alias `nonara`, 4096-bit RSA,
+    certificate `CN=Nonara`). **Never commit it**, its passwords or `*.jks`/`*.keystore` files.
+    Losing it means existing installs can no longer be updated in place.
+  - `tools/release.sh <version>` performs the whole ritual: bumps `versionCode`/`versionName`,
+    updates the About line, runs tests/lint, builds and checksums the APK, commits, tags
+    `v<version>` and pushes the tag. `--dry-run` stops before committing.
 - `tools/upload-apk.sh [remote:path]` copies the newest release APK and its `.sha256` file to
   Google Drive with `rclone`, printing the target on success. The default target is
   `gdrive:Nonara/releases`; the folder in use is `gdrive:nonara`. The remote lives outside the
   repo in `~/.config/rclone/rclone.conf` — never commit credentials. Uploads run at upstream
   link speed (~30 KiB/s for a 35 MB APK).
+
+## Continuous integration
+
+The source of truth is Codeberg; a push mirror copies `main` and all tags to the public GitHub
+repository, where GitHub Actions builds.
+
+- `.github/workflows/ci.yml`: a push to `main` runs `testDebugUnitTest` and `lintDebug`; a `v*`
+  tag additionally builds the signed release APK, asserts the signer is `CN=Nonara`, writes
+  checksums and publishes a GitHub release with the APK attached; a manual dispatch builds the
+  same APK as a preview artifact without publishing.
+- The release job refuses to run when the tag does not match `nonaraVersionName`, when the
+  keystore secret is missing, or when the built APK is not signed with the release key. Never
+  weaken those checks: a per-runner debug key would silently break installs.
+- `tools/install-android-sdk.sh` installs the `android-37` platform and 36/37 build-tools the
+  workflow needs.
+- The mirror is authenticated with a Forgejo-generated SSH key added as a GitHub deploy key
+  (write access). It force-pushes (`git push --mirror`), so treat the GitHub copy as disposable:
+  no commits, tags or branches are created there by hand.
+- Repository secrets: `NONARA_KEYSTORE_B64` (base64 of the keystore), `NONARA_STORE_PASSWORD`,
+  `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Mirror force-pushes never touch secrets.
 
 ## Device testing
 

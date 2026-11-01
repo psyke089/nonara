@@ -6,6 +6,13 @@ plugins {
 val nonaraVersionCode = 4
 val nonaraVersionName = "0.3.1"
 
+// Release signing key: supplied from ~/.gradle/gradle.properties (`nonara.*`) or CI env vars.
+// Never commit the keystore, its passwords or this file's values.
+fun signingValue(property: String, env: String): String? =
+    providers.gradleProperty(property).orNull ?: System.getenv(env)
+
+val releaseStoreFile = signingValue("nonara.storeFile", "NONARA_STORE_FILE")
+
 android {
     namespace = "app.nonara.notes"
     compileSdk {
@@ -22,9 +29,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("nonara") {
+            if (releaseStoreFile != null) {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("nonara.storePassword", "NONARA_STORE_PASSWORD")
+                keyAlias = signingValue("nonara.keyAlias", "NONARA_KEY_ALIAS") ?: "nonara"
+                keyPassword = signingValue("nonara.keyPassword", "NONARA_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // Without the key (contributor checkout) fall back to debug signing so the APK is
+            // still installable; CI asserts the published APK is signed with CN=Nonara.
+            signingConfig = signingConfigs.getByName(if (releaseStoreFile != null) "nonara" else "debug")
             optimization {
                 enable = false
             }

@@ -31,17 +31,28 @@ The [product and technical specification](docs/SPEC.md) remains the target. See
 ./gradlew lintDebug assembleDebug        # lint + debug APK
 ./gradlew assembleDebugAndroidTest       # instrumented test APK
 ./gradlew installDebug                   # install on the attached device
-./gradlew assembleRelease                # release APK, debug-signed
+./gradlew assembleRelease                # release APK, signed with the release key
+tools/release.sh 0.4.0                   # bump, test, build, tag, push
 tools/upload-apk.sh                      # newest release APK -> Google Drive (rclone)
 
 adb shell am instrument -w app.nonara.notes.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
+JVM download tests use small local HTTP fixtures and persisted transfer-state tests; they require
+no phone, emulator or real speech models. Model downloads can be cancelled with progress kept,
+resumed/retried, or explicitly discarded in Settings.
+
 The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`; the release APK to
-`app/build/outputs/apk/release/nonara-<version>.apk` (arm64-v8a, signed with the debug key like
-every other build). `tools/upload-apk.sh` copies the newest release APK plus its SHA-256 to a
-Google Drive remote and needs a one-time `rclone config` setup; credentials stay in
+`app/build/outputs/apk/release/nonara-<version>.apk` (arm64-v8a). Releases are signed with the
+key configured through `nonara.*` Gradle properties (or `NONARA_*` environment variables); a
+checkout without that key silently uses debug signing, and CI rejects such an APK when
+publishing. `tools/upload-apk.sh` copies the newest release APK plus its SHA-256 to a Google
+Drive remote and needs a one-time `rclone config` setup; credentials stay in
 `~/.config/rclone/rclone.conf`, never in the repo.
+
+Codeberg is the source of truth. A push mirror copies `main` and tags to the public GitHub
+repository, where GitHub Actions runs the tests on every push and publishes the APK as a GitHub
+release for every `v*` tag.
 
 ## Layout
 
