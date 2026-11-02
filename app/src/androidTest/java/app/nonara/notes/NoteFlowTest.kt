@@ -16,10 +16,10 @@ class NoteFlowTest {
         try {
             compose.runOnIdle { compose.activity.requestedOrientation=android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             compose.waitUntil(5000) { compose.activity.resources.configuration.orientation==android.content.res.Configuration.ORIENTATION_LANDSCAPE }
-            compose.onNodeWithText("Write",substring=false).assertIsDisplayed()
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithContentDescription("Write").assertIsDisplayed()
+            compose.onNodeWithContentDescription("Settings").performClick()
             compose.onNodeWithTag("model-small").performScrollTo().assertIsDisplayed()
-            compose.onNodeWithText("Back",substring=false).performClick()
+            compose.onNodeWithContentDescription("Back").performClick()
             compose.onNodeWithTag("search").assertExists()
         } finally {
             compose.runOnIdle { compose.activity.requestedOrientation=previous }
@@ -31,7 +31,7 @@ class NoteFlowTest {
         try {
             compose.runOnIdle { model.preference("language","de-DE") }
             compose.waitUntil(5000) { model.language=="de-DE" }
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithContentDescription("Settings").performClick()
             compose.onNodeWithTag("model-parakeet-v3").performScrollTo().performClick()
             compose.waitUntil(5000) { model.modelSize=="parakeet-v3" && model.language=="de-DE" }
             compose.onNodeWithTag("model-parakeet-v3").assertIsSelected()
@@ -48,7 +48,7 @@ class NoteFlowTest {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
         val original=model.modelSize
         try {
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithContentDescription("Settings").performClick()
             compose.onNodeWithTag("model-small").performScrollTo().performClick()
             compose.waitUntil(5000) { model.modelSize=="small" }
             compose.onNodeWithTag("model-small").assertIsSelected()
@@ -66,7 +66,7 @@ class NoteFlowTest {
         try {
             compose.runOnIdle { model.preference("language","de-DE") }
             compose.waitUntil(5000) { model.language=="de-DE" }
-            compose.onNodeWithText("Settings").performClick()
+            compose.onNodeWithContentDescription("Settings").performClick()
             for(id in listOf("canary-180m","omnilingual-300m","nemotron-3.5","whisper-turbo","whisper-large-v3")) {
                 compose.onNodeWithTag("model-$id").performScrollTo().performClick()
                 compose.waitUntil(5000) { model.modelSize==id && model.language=="de-DE" }
@@ -82,10 +82,10 @@ class NoteFlowTest {
         }
     }
     @Test fun settingsExposeNoAndroidBackendControls() {
-        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithContentDescription("Settings").performClick()
         compose.onNodeWithText("Android live",substring=true).assertDoesNotExist()
         compose.onNodeWithText("Request Android language pack",substring=false).assertDoesNotExist()
-        compose.onNodeWithText("Back",substring=false).performClick()
+        compose.onNodeWithContentDescription("Back").performClick()
     }
     @Test fun recordingWithoutAnInstalledModelOpensSettings() {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
@@ -96,7 +96,7 @@ class NoteFlowTest {
         try {
             compose.runOnIdle { model.preference("model",target) }
             compose.waitUntil(5000) { model.modelSize==target && target !in model.installed }
-            compose.onNodeWithText("Record a thought").performClick()
+            compose.onNodeWithContentDescription("Record").performClick()
             compose.waitUntil(5000) { model.page=="settings" && model.error!=null }
             assertNull(model.active)
             assertTrue(model.error.orEmpty().contains("Settings"))
@@ -136,17 +136,17 @@ class NoteFlowTest {
         val text="Nonara UI regression ${newId()}"
         val store=Stores.notes(compose.activity)
         try {
-            compose.onNodeWithText("Write").performClick()
+            compose.onNodeWithContentDescription("Write").performClick()
             compose.onNodeWithTag("body").performTextInput(text)
             compose.waitUntil(10000) { store.list().any { it.body==text } }
-            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithContentDescription("Back").performClick()
             compose.waitUntil(10000) { compose.onAllNodesWithTag("search").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("search").performTextInput(text)
             compose.onNodeWithTag("note-${store.list().single { it.body==text }.id}").performClick()
             compose.waitUntil(10000) { compose.onAllNodesWithTag("body").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithTag("body").assertTextContains(text)
             assertEquals(text,store.list().single { it.body==text }.body)
-            compose.onNodeWithText("Back").performClick()
+            compose.onNodeWithContentDescription("Back").performClick()
             compose.waitUntil(10000) { compose.onAllNodesWithTag("search").fetchSemanticsNodes().isNotEmpty() }
         } finally {
             store.list().filter { it.body==text }.forEach { note -> compose.activity.filesDir.resolve("notes/${note.id}.md").delete() }

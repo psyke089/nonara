@@ -3,7 +3,7 @@ package app.nonara.notes
 import com.k2fsa.sherpa.onnx.*
 import java.io.File
 
-enum class SpeechModelFamily { WHISPER, PARAKEET, CANARY, OMNILINGUAL, NEMOTRON }
+enum class SpeechModelFamily { WHISPER, PARAKEET, CANARY, OMNILINGUAL, NEMOTRON, KROKO, NEMO_CTC, NEMO_TRANSDUCER }
 
 data class SpeechModel(
     val id: String,
@@ -18,7 +18,7 @@ data class SpeechModel(
         require(supports(current)) { "$name does not support the selected language ($current)." }
         return current
     }
-    val streaming: Boolean get() = family == SpeechModelFamily.NEMOTRON
+    val streaming: Boolean get() = family in setOf(SpeechModelFamily.NEMOTRON, SpeechModelFamily.KROKO)
     private val featureDim: Int get() = when {
         family in setOf(SpeechModelFamily.CANARY, SpeechModelFamily.NEMOTRON) -> 128
         id in setOf("whisper-large-v3", "whisper-turbo") -> 128
@@ -35,6 +35,7 @@ data class SpeechModel(
         return OnlineRecognizerConfig(
             featConfig = FeatureConfig(sampleRate = 16000, featureDim = featureDim),
             modelConfig = OnlineModelConfig(tokens = path(folder, "tokens"), numThreads = 4,
+                modelType = if(family == SpeechModelFamily.KROKO) "zipformer2" else "",
                 transducer = OnlineTransducerModelConfig(encoder = path(folder, "encoder"),
                     decoder = path(folder, "decoder"), joiner = path(folder, "joiner"))),
             enableEndpoint = false,
@@ -47,7 +48,7 @@ data class SpeechModel(
         when(family) {
             SpeechModelFamily.WHISPER -> config.whisper = OfflineWhisperModelConfig(
                 encoder = path(folder, "encoder"), decoder = path(folder, "decoder"), language = language.take(2), task = "transcribe")
-            SpeechModelFamily.PARAKEET -> {
+            SpeechModelFamily.PARAKEET, SpeechModelFamily.NEMO_TRANSDUCER -> {
                 config.transducer = OfflineTransducerModelConfig(encoder = path(folder, "encoder"),
                     decoder = path(folder, "decoder"), joiner = path(folder, "joiner"))
                 config.modelType = "nemo_transducer"
@@ -56,7 +57,8 @@ data class SpeechModel(
                 encoder = path(folder, "encoder"), decoder = path(folder, "decoder"),
                 srcLang = language.take(2), tgtLang = language.take(2), usePnc = true)
             SpeechModelFamily.OMNILINGUAL -> config.omnilingual = OfflineOmnilingualAsrCtcModelConfig(model = path(folder, "model"))
-            SpeechModelFamily.NEMOTRON -> error("$name needs the streaming decoder")
+            SpeechModelFamily.NEMO_CTC -> config.nemo = OfflineNemoEncDecCtcModelConfig(model = path(folder, "model"))
+            SpeechModelFamily.NEMOTRON, SpeechModelFamily.KROKO -> error("$name needs the streaming decoder")
         }
         return OfflineRecognizerConfig(featConfig = FeatureConfig(sampleRate = 16000, featureDim = featureDim), modelConfig = config)
     }

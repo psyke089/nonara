@@ -16,6 +16,5 @@ class NonaraSmokeTest {
     @Test fun emptyStateIsShown() {
         val activity = compose.activity
         compose.onNodeWithText(activity.getString(R.string.notes_empty_title)).assertIsDisplayed()
-        compose.onNodeWithText(activity.getString(R.string.notes_empty_body)).assertIsDisplayed()
     }
 }

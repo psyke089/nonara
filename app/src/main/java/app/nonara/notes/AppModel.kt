@@ -38,6 +38,12 @@ class AppModel(application:Application):AndroidViewModel(application) {
     var microphoneLevel by mutableStateOf(0f); private set
     var elapsedMillis by mutableStateOf(0L); private set
     var captureLabel by mutableStateOf(""); private set
+    var streaming by mutableStateOf(false); private set
+    var livePreview by mutableStateOf(""); private set
+    var previewStatus by mutableStateOf(""); private set
+    private var previewJob: Job? = null
+    private var previewGeneration = 0
+    private var captureStreaming = false
     private val recordingClock = RecordingClock()
     private var clockJob: Job? = null
     var downloadingModel by mutableStateOf<String?>(null); private set
@@ -49,10 +55,12 @@ class AppModel(application:Application):AndroidViewModel(application) {
     private var saveJob:Job?=null
         private var revision=System.nanoTime()
     private var editorBase=""
-    private var undo:Note?=null
+    private var undo by mutableStateOf<Note?>(null)
+    val canUndo get()=undo!=null
     init {
         viewModelScope.launch { context.preferences.data.collect {
             theme=it[stringPreferencesKey("theme")] ?: "System"
+            streaming=it[stringPreferencesKey("streaming")]=="true"
             language=DictationDefaults.language(it[stringPreferencesKey("language")])
             modelSize=DictationDefaults.model(it[stringPreferencesKey("model")])
         } }
@@ -69,6 +77,7 @@ class AppModel(application:Application):AndroidViewModel(application) {
     fun preference(key:String,value:String) { viewModelScope.launch { context.preferences.edit { it[stringPreferencesKey(key)]=value } } }
     fun selectModel(id: String) = task {
         val info=models.info(id)
+        require(!streaming || info.streaming) { "Choose a streaming model" }
         context.preferences.edit {
             it[stringPreferencesKey("model")]=id
             it[stringPreferencesKey("language")]=info.languageForSelection(language)
@@ -114,9 +123,11 @@ class AppModel(application:Application):AndroidViewModel(application) {
         require(active==null) { "A capture is already open" }
         require(models.supports(modelSize,language)) { "This model does not support the selected language. Choose another model in Settings." }
         require(models.ready(modelSize)) { "Download a speech model in Settings before recording" }
+        require(!streaming || models.info(modelSize).streaming) { "Choose a streaming model in Settings" }
         flush(); require(status!="Couldn't save") { "Save the note before recording" }
         val note=editor?.takeIf { it.body.isNotBlank() || it.title!=null }
         val r=withContext(Dispatchers.IO) { captures.create(note,caret,language,modelSize) }
+        captureStreaming=streaming
         active=r.getString("id"); paused=false; recordingClock.start(android.os.SystemClock.elapsedRealtime())
         begin(r)
     }
@@ -129,8 +140,9 @@ class AppModel(application:Application):AndroidViewModel(application) {
         clockJob=viewModelScope.launch { while(isActive) { elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); delay(100) } }
         try {
         recorder.start(id, { microphoneLevel=it }) { message -> error=message; viewModelScope.launch { pause(true) } }
+        startPreview(r)
         } catch(e:Exception) {
-            recorder.release()
+            recorder.release(); stopPreview()
             recordingClock.pause(android.os.SystemClock.elapsedRealtime())
             clockJob?.cancel(); microphoneLevel=0f; paused=true
             captures.state(id,"interrupted",e.message ?: "Microphone unavailable")
@@ -140,24 +152,54 @@ class AppModel(application:Application):AndroidViewModel(application) {
     suspend fun pause(interrupted:Boolean=false) {
         if(busyCapture || active==null) return
         busyCapture=true
-        try { recorder.stop(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true; recordingClock.pause(android.os.SystemClock.elapsedRealtime()); clockJob?.cancel(); elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); microphoneLevel=0f }
+        try { recorder.stop(); stopPreview(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true; recordingClock.pause(android.os.SystemClock.elapsedRealtime()); clockJob?.cancel(); elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); microphoneLevel=0f }
         finally { busyCapture=false }
     }
     fun togglePause()=task { if(paused) { val r=captures.read(active!!); captures.state(active!!,"recording"); begin(r); paused=false } else pause() }
     fun finish()=task {
         val id=active ?: return@task; busyCapture=true
-        try { recorder.stop(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f; refresh() }
+        try { recorder.stop(); stopPreview(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f; refresh() }
         finally { busyCapture=false }
     }
     fun discard(id:String)=task {
-        if(active==id) { recorder.stop(); active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f }
+        if(active==id) { recorder.stop(); stopPreview(); active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f }
         withContext(Dispatchers.IO) { captures.discard(id) }; refresh()
     }
     fun resume(id:String)=task {
         require(active==null) { "Finish the current recording first" }
         val r=withContext(Dispatchers.IO) { captures.read(id) }
         require(r.getString("state") in listOf("paused","interrupted"))
+        captureStreaming=streaming && models.info(r.getString("model")).streaming
         active=id; paused=false; recordingClock.start(android.os.SystemClock.elapsedRealtime()); begin(r); captures.state(id,"recording")
+    }
+    private fun stopPreview() {
+        previewGeneration++; previewJob?.cancel(); previewJob=null
+        previewStatus=""
+    }
+    private fun startPreview(record:JSONObject) {
+        stopPreview(); livePreview=""
+        if(!captureStreaming) return
+        val generation=previewGeneration
+        val id=record.getString("id")
+        previewStatus="Starting preview…"
+        previewJob=viewModelScope.launch(Dispatchers.Default) {
+            val owner=Any()
+            if(!Stores.inference.tryLock(owner)) {
+                withContext(Dispatchers.Main) { if(generation==previewGeneration) previewStatus="Preview unavailable · transcription in progress" }
+                return@launch
+            }
+            try {
+                val info=models.info(record.getString("model"))
+                followPcm(captures.dir(id),createLiveSession(info,models.directory(info.id),record.getString("language"))) { text ->
+                    withContext(Dispatchers.Main) {
+                        if(generation==previewGeneration) { livePreview=text; previewStatus="Live preview" }
+                    }
+                }
+            } catch(e:CancellationException) { throw e }
+            catch(e:Exception) {
+                withContext(Dispatchers.Main) { if(generation==previewGeneration) previewStatus="Preview unavailable · audio recording continues" }
+            } finally { Stores.inference.unlock(owner) }
+        }
     }
     fun retry(id:String)=task { withContext(Dispatchers.IO) { captures.enqueue(id) }; refresh() }
     private suspend fun refreshDownloads() {
@@ -205,5 +247,5 @@ class AppModel(application:Application):AndroidViewModel(application) {
         }; status=summary; refresh()
     }
     fun task(block:suspend ()->Unit) { viewModelScope.launch { try { block() } catch(e:CancellationException) { throw e } catch(e:Exception) { error=e.message ?: "Operation failed" } } }
-    override fun onCleared() { clockJob?.cancel(); recorder.release(); super.onCleared() }
+    override fun onCleared() { clockJob?.cancel(); stopPreview(); recorder.release(); super.onCleared() }
 }

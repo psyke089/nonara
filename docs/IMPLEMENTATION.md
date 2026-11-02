@@ -7,7 +7,9 @@ The current code is a functional first implementation, not complete acceptance o
 - API 33 minimum, network/microphone declarations and backup/transfer exclusion rules.
 - Markdown/YAML note codec, UUIDv7 IDs, atomic writes, draft recovery, stale-save protection,
   capture receipts, search, optional titles, copy/share, trash and restoration.
-- Paper/burgundy Compose Home, Editor and Settings with serif headings and grouped note cards.
+- Minimal Home, Editor and Settings with the supplied theme-tinted vector wordmark, locally drawn
+  icon actions with accessible names/tooltips, concise labels and grouped note cards. Home has
+  no model switcher or promotional copy. Model cards expose language and Streaming chips.
 - Recording panel with elapsed active time, PCM RMS input meter, explicit microphone
   state and pause/resume/finish controls. Family-specific model cards show selection, sizes and per-model
   installation/download controls. ZIP import/export with path/size bounds.
@@ -16,7 +18,8 @@ The current code is a functional first implementation, not complete acceptance o
   the selected language; missing models send the user to Settings without downloading or
   switching recognizers.
 - Pinned Sherpa 2.0.1 dependency; Whisper Tiny/Base/Small/Medium/Turbo/Large v3, Parakeet v3,
-  Canary 180M Flash, Omnilingual ASR 300M and Nemotron 3.5 (560 ms) int8 catalogue with pinned model revisions,
+  Canary 180M Flash, Omnilingual ASR 300M, Nemotron 3.5 (160/560 ms), German FastConformer
+  transducer/CTC int8 and Kroko German catalogue with pinned model revisions,
   sizes and SHA-256 checksums; explicit downloads, progress, cancellation and model deletion guards.
 - Durable, unique foreground WorkManager model downloads with data-sync service declarations,
   progress notification/Cancel, notification permission handling, and persisted transfer status
@@ -33,9 +36,14 @@ The current code is a functional first implementation, not complete acceptance o
   releases streams on cancellation. Canary source/target language match; Turbo/Large v3 use 128 mel bins.
   Language compatibility guards and
   model selection preserving the chosen language. Models remain separate explicit downloads.
-- [Complete German model catalogue](MODEL_CATALOGUE.md), including reference-only FastConformer,
-  Kroko, Omnilingual v2, Cohere and Qwen entries and all published precision/chunk variants.
+- [Complete German model catalogue](MODEL_CATALOGUE.md), including additional reference-only multilingual FastConformer,
+  Omnilingual v2, Cohere and Qwen entries and all published precision/chunk variants.
 - Foreground PCM recording, pause/resume, interruption persistence and manual recovery.
+- Optional live Sherpa preview for streaming models: bounded reads from saved PCM, background
+  native inference, endpoint/partial handling and cancellation with resource release. Preview is
+  transient; Finish reuses durable final transcription and receipt-based insertion. A busy inference
+  slot or preview error leaves PCM recording active with a concise status. Capture/note schemas
+  and import/export formats are unchanged.
 - WorkManager transcription, Silero VAD, bounded decode segments and cached segment results;
   recognized text is applied once and successful capture audio is cleaned up.
 
@@ -49,12 +57,25 @@ The current code is a functional first implementation, not complete acceptance o
 - Stronger reconciliation of simultaneous editor changes/transcript commits; current conflicts
   stop a stale save and retain the draft in the editor for copying rather than merging it.
 - Product polish: broader accessibility/landscape review, translated interface copy,
-  in-app supplied brand artwork, and preservation of Home scroll position.
+  and preservation of Home scroll position.
 - Full speech recognition testing and base/small performance/accuracy measurements on the OnePlus
   5T. The models have not been downloaded to the phone or benchmarked. German/English corpus,
   silence/noise acceptance, interruption/device-restart cases remain unverified.
 
 ## Validation
+
+- Minimal UI/streaming/catalogue update (2026-11-02): 56 JVM tests pass; offline lint,
+  debug APK and instrumented-test APK builds pass. The full 20-test instrumented suite passes
+  on the OnePlus 5T, covering the minimal Home, icon actions, language/Streaming chips,
+  incompatible language controls, streaming preference recreation, landscape navigation,
+  existing capture persistence and real microphone PCM recording. The supplied wordmark and
+  compact Settings were also inspected in phone screenshots.
+- No model weights or test audio were downloaded for this update. Catalogue metadata/vocabulary
+  lookups transferred under 200 KB. No models are installed on the phone, so real native
+  recognition/preview quality, latency, memory use and decoder compatibility remain unverified.
+  Deterministic tests cover growing PCM reads, partial replacement, endpoint accumulation,
+  preview cancellation/resource release without deleting audio, and Zipformer tail flushing.
+
 
 - Resumable-download verification is local only: deterministic byte fixtures/local HTTP server
   cover interruption/resume, 206/200/416 handling, invalid/changed ranges and identity, corrupt

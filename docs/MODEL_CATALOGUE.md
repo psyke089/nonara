@@ -1,6 +1,6 @@
 # German-capable sherpa-onnx speech models
 
-Checked **2026-11-01**. This is the exhaustive German-capable **ASR** list for the official
+Checked **2026-11-02**. This is the exhaustive German-capable **ASR** list for the official
 sherpa-onnx catalogue at this snapshot, including existing Nonara choices and additional models.
 It is not a list of every language or of TTS, VAD, punctuation, speaker-identification or audio-tagging models.
 Versions and precision variants are included rather than filtered by my recommendations.
@@ -42,11 +42,10 @@ and int8** encoder/decoder variants; float32 exports can require separate extern
 
 ### NVIDIA NeMo: FastConformer, offline CTC
 
-All three models below have **float32 and int8** exports. These are additional choices, not the
-five initially recommended. They are included here without filtering for expected quality or speed.
+All three models below have **float32 and int8** exports. The German-specific CTC int8 export is now an explicit Nonara download; the other two remain reference entries.
 
 - [German FastConformer Hybrid Large, CTC decoder (`stt_de_fastconformer_hybrid_large_pc`)](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc/tree/main).
-  - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8/tree/main).
+  - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8/tree/main) — Nonara `fastconformer-de-ctc`, German only.
   - [German upstream model card](https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc).
 - [FastConformer CTC, English/German/Spanish/French, 14,288 hours](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288/tree/main).
   - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-ctc-en-de-es-fr-14288-int8/tree/main).
@@ -59,7 +58,7 @@ These use the **transducer/RNN-T** decoder, so they are distinct from the CTC ex
 Each has **float32 and int8** variants.
 
 - [German FastConformer Hybrid Large, transducer decoder (`stt_de_fastconformer_hybrid_large_pc`)](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc/tree/main).
-  - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/tree/main).
+  - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/tree/main) — Nonara `fastconformer-de`, German only.
 - [FastConformer transducer, English/German/Spanish/French, 14,288 hours](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-transducer-en-de-es-fr-14288/tree/main).
   - [int8](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-transducer-en-de-es-fr-14288-int8/tree/main).
 - [FastConformer transducer, ten languages including German, 20k hours](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-transducer-be-de-en-es-fr-hr-it-pl-ru-uk-20k/tree/main).
@@ -69,7 +68,7 @@ Each has **float32 and int8** variants.
 
 - [Kroko German streaming Zipformer, 2025-08-06](https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/tree/main).
   - Official release: `sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06.tar.bz2`.
-  - German-specific model, distinct from English, French and Spanish Kroko exports.
+  - German-specific model, distinct from English, French and Spanish Kroko exports. Nonara `kroko-de` is an explicit download and supports live streaming preview.
   - The catalogue publishes one bundle under this name; it is not advertised as a separately selectable float32/int8 pair.
 
 ### Meta Omnilingual ASR, offline CTC
@@ -141,9 +140,9 @@ not sufficient evidence of German support.
 - **German Citrinet from the separate `sherpa` PyTorch catalogue** is not a published model in
   the sherpa-onnx catalogue and is outside this list's runtime scope.
 
-## Five recommendations added to Nonara
+## Initial five additions to Nonara
 
-The same five recommendations from the earlier discussion are now separate explicit downloads.
+The five additions from the earlier discussion remain separate explicit downloads.
 The exhaustive list above also includes other potentially useful models; these five are not a
 claim that the alternatives have been benchmarked or found inferior.
 
@@ -155,13 +154,36 @@ claim that the alternatives have been benchmarked or found inferior.
 
 Every file has a pinned revision, expected size and SHA-256 in `app/src/main/assets/models.json`.
 The existing five model IDs, pinned files and installation paths are preserved. German remains
-the default; all ten choices support German and English, and selection preserves the stored language.
+the default; all fourteen choices support German. English is available on multilingual choices;
+the two German FastConformer exports and Kroko German are German-only. Selection preserves
+the stored language; incompatible selections are disabled/rejected.
 Canary uses matching source/target languages to transcribe rather than translate. Omnilingual's
 CTC backend has no forced-language option. Nemotron uses its streaming decoder on saved VAD
-segments; this does not add a new live-recording UI or upload audio.
+segments. The new Streaming mode also provides live preview for Nemotron and Kroko while
+the app saves recoverable PCM; preview never directly commits note text or uploads audio.
 
 No model weights or test audio were downloaded for development. Small token vocabulary text
 was read to derive its SHA-256; weight sizes/hashes come from pinned Hugging Face LFS metadata.
 Native transcription quality, latency, memory use and phone behavior remain unverified. Local
 regressions cover language preservation, required components, Whisper feature dimensions,
 Canary transcription language, streamed sample/tail handling, cancellation and durable transfers.
+
+## German specialists and streaming additions (2026-11-02)
+
+| Download ID | Variant | Bytes including tokens and VAD | App languages | Live preview |
+|---|---|---:|---|---|
+| `fastconformer-de` | German FastConformer transducer int8 | 137,132,600 | DE | No |
+| `fastconformer-de-ctc` | German FastConformer CTC int8 | 132,307,485 | DE | No |
+| `kroko-de` | German Kroko Zipformer | 71,695,323 | DE | Yes |
+| `nemotron-3.5-160ms` | Nemotron 3.5 160 ms int8 | 682,859,325 | DE, EN | Yes |
+
+Existing `nemotron-3.5` remains the 560 ms export and also supports live preview. Both modes
+retain PCM and use saved-audio transcription for the final note. Recording mode accepts every
+compatible model; Streaming filters the catalogue to native streaming models. Switching modes
+never silently switches model or language. There is no English-only addition.
+
+The new pinned file metadata and vocabulary text required approximately 166 KB of network
+transfer (plus the initial 6 KB manifest and a small DNS lookup). No weights or test audio were
+downloaded. Token SHA-256 values were calculated locally after checking their Git blob IDs
+against upstream metadata. German recognition quality, actual native inference latency and
+peak memory remain unverified; these downloads are candidates, not a benchmark ranking.

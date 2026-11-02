@@ -11,7 +11,7 @@ internal interface StreamingSession: Closeable {
 }
 
 /** Drain while feeding bounded PCM chunks; finalization makes the last partial frame readable. */
-internal fun decodeStreamingSegment(samples: FloatArray, session: StreamingSession, checkCancellation: () -> Unit = {}): String = session.use {
+internal fun decodeStreamingSegment(samples: FloatArray, session: StreamingSession, tailSilenceSamples: Int = 0, checkCancellation: () -> Unit = {}): String = session.use {
     fun drain() {
         while(session.ready()) { checkCancellation(); session.decode() }
     }
@@ -21,6 +21,12 @@ internal fun decodeStreamingSegment(samples: FloatArray, session: StreamingSessi
         val end = minOf(offset + 1600, samples.size)
         session.accept(samples.copyOfRange(offset, end))
         drain(); offset = end
+    }
+    var tail = tailSilenceSamples
+    while(tail > 0) {
+        checkCancellation()
+        val count = minOf(1600,tail)
+        session.accept(FloatArray(count)); drain(); tail -= count
     }
     checkCancellation()
     session.finish()

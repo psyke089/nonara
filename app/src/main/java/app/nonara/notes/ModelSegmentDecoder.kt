@@ -19,7 +19,7 @@ internal fun createModelSegmentDecoder(model: SpeechModel, folder: File, languag
                 val stream = recognizer.createStream()
                 try {
                     // Set on every new stream; never fall back to English or automatic detection.
-                    stream.setOption("language", language.take(2))
+                    if(model.family == SpeechModelFamily.NEMOTRON) stream.setOption("language", language.take(2))
                 } catch(e: Exception) { stream.release(); throw e }
                 return decodeStreamingSegment(samples, object: StreamingSession {
                     override fun accept(samples: FloatArray) = stream.acceptWaveform(samples, 16000)
@@ -28,7 +28,7 @@ internal fun createModelSegmentDecoder(model: SpeechModel, folder: File, languag
                     override fun decode() = recognizer.decode(stream)
                     override fun result() = recognizer.getResult(stream).text.trim()
                     override fun close() = stream.release()
-                }, checkCancellation)
+                }, tailSilenceSamples=if(model.family==SpeechModelFamily.KROKO) 12800 else 0, checkCancellation=checkCancellation)
             }
             override fun close() = recognizer.release()
         }

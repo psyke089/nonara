@@ -6,7 +6,8 @@ Nonara keeps notes and speech recognition on the device: no accounts, no analyti
 Network access is allowed for downloading speech models; transcription will work offline once
 the required models are installed. German is the primary dictation language. Downloadable
 models include multilingual Whisper Tiny/Base/Small/Medium/Turbo/Large v3, Parakeet TDT 0.6B v3,
-Canary 180M Flash, Omnilingual ASR 300M and Nemotron 3.5;
+Canary 180M Flash, Omnilingual ASR 300M, Nemotron 3.5 (160/560 ms), German FastConformer
+CTC/transducer and Kroko German;
 all offered models support German, with English available as a secondary language.
 The [German model catalogue](docs/MODEL_CATALOGUE.md) lists the complete official selection,
 available variants, sources and which choices Nonara offers.
@@ -15,7 +16,10 @@ available variants, sources and which choices Nonara offers.
 
 The app includes Home/search, a Markdown editor with automatic saves, trash/restore, ZIP
 import/export, theme settings, model downloads, and recoverable Sherpa recording/transcription
-as the only dictation backend. Android 13 / API 33 is the minimum.
+as the only dictation backend. Streaming-capable models also offer live preview while PCM
+remains recoverable; final note text is committed from saved-audio transcription after Finish.
+The interface uses the supplied wordmark, icon actions and language/streaming model chips.
+Android 13 / API 33 is the minimum.
 
 The [product and technical specification](docs/SPEC.md) remains the target. See
 [implementation status](docs/IMPLEMENTATION.md) for remaining work and validation limits.

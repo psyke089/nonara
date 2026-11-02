@@ -11,6 +11,7 @@ fun NonaraTheme(mode: String = "System", content: @Composable () -> Unit) {
         colorScheme=if(dark) darkColorScheme(
             primary=Color(0xFFE6AFBD), onPrimary=Color(0xFF431D29),
             primaryContainer=Color(0xFF4C2D38), onPrimaryContainer=Color(0xFFFFD9E1),
+            secondaryContainer=Color(0xFF4C2D38), onSecondaryContainer=Color(0xFFFFD9E1),
             background=Color(0xFF191719), surface=Color(0xFF211E20),
             onBackground=Color(0xFFF1E6E5), onSurface=Color(0xFFF1E6E5),
             onSurfaceVariant=Color(0xFFCBBDBF), surfaceContainerLow=Color(0xFF272325),
@@ -18,6 +19,7 @@ fun NonaraTheme(mode: String = "System", content: @Composable () -> Unit) {
         ) else lightColorScheme(
             primary=Color(0xFF76283A), onPrimary=Color.White,
             primaryContainer=Color(0xFFF2DDE1), onPrimaryContainer=Color(0xFF4B2430),
+            secondaryContainer=Color(0xFFF2DDE1), onSecondaryContainer=Color(0xFF4B2430),
             secondary=Moss, background=Paper, onBackground=Ink,
             surface=Paper, onSurface=Ink, onSurfaceVariant=FadedInk,
             surfaceContainerLow=Color(0xFFEDE7DD), surfaceContainer=Color(0xFFE6DED3),

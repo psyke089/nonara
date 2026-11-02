@@ -317,8 +317,8 @@
     "repo": "csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11",
     "version": "ab43d895f5985b1bbab8b6eac8607fcdc05343f3",
     "runtime": "2.0.1",
-    "name": "Nemotron 3.5",
-    "description": "NVIDIA Nemotron \u00b7 multilingual saved dictation.",
+    "name": "Nemotron 3.5 \u00b7 560 ms",
+    "description": "Multilingual Nemotron \u00b7 560 ms streaming, int8.",
     "family": "nemotron",
     "source": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
     "languages": [
@@ -443,6 +443,197 @@
         "size": 816730,
         "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126",
         "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-large-v3/resolve/2a6507094dd6020d939d78e3f1834a1d06267fca/large-v3-tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "fastconformer-de",
+    "repo": "csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8",
+    "version": "df32693bc4328136c455af24035a5ee1ec708df0",
+    "runtime": "2.0.1",
+    "name": "FastConformer German",
+    "description": "German FastConformer \u00b7 transducer, int8.",
+    "family": "nemo_transducer",
+    "source": "https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc",
+    "languages": [
+      "de-DE"
+    ],
+    "license": "FastConformer: CC-BY-4.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "decoder.int8.onnx",
+        "size": 3955863,
+        "sha256": "4633a4b0a3f21f7ace4df02e772f5b5e63d45f84a71ee1e2660998fc4beb46ad",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/resolve/df32693bc4328136c455af24035a5ee1ec708df0/decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "encoder.int8.onnx",
+        "size": 131114014,
+        "sha256": "10fbb959c36c461afb02ea87c109119eb001f30e91a130663bd6d5bbcba74ba9",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/resolve/df32693bc4328136c455af24035a5ee1ec708df0/encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "joiner.int8.onnx",
+        "size": 1408183,
+        "sha256": "80f493f2885f6ccbd9cf9c20f4b6c616c2eb6dae48df6a5d4a0653354f7fe66b",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/resolve/df32693bc4328136c455af24035a5ee1ec708df0/joiner.int8.onnx",
+        "role": "joiner"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 10686,
+        "sha256": "abb1136142604d6d1766ad5060bd4f4b1048d7a096cd094b2d40eec3e666be9f",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-transducer-stt_de_fastconformer_hybrid_large_pc-int8/resolve/df32693bc4328136c455af24035a5ee1ec708df0/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "fastconformer-de-ctc",
+    "repo": "csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8",
+    "version": "e8069b7f76b407780f1aca3388ec2a53f57a2603",
+    "runtime": "2.0.1",
+    "name": "FastConformer German CTC",
+    "description": "German FastConformer \u00b7 CTC, int8.",
+    "family": "nemo_ctc",
+    "source": "https://huggingface.co/nvidia/stt_de_fastconformer_hybrid_large_pc",
+    "languages": [
+      "de-DE"
+    ],
+    "license": "FastConformer: CC-BY-4.0; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "model.int8.onnx",
+        "size": 131652945,
+        "sha256": "fcf42d4fd55b42b0b11fed368b04467f0a636a52f44bcacd3f4667697c26e259",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8/resolve/e8069b7f76b407780f1aca3388ec2a53f57a2603/model.int8.onnx",
+        "role": "model"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 10686,
+        "sha256": "abb1136142604d6d1766ad5060bd4f4b1048d7a096cd094b2d40eec3e666be9f",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-stt_de_fastconformer_hybrid_large_pc-int8/resolve/e8069b7f76b407780f1aca3388ec2a53f57a2603/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "kroko-de",
+    "repo": "csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06",
+    "version": "887db3d083240198c2d2b99fb66cfcfe6948ced8",
+    "runtime": "2.0.1",
+    "name": "Kroko German",
+    "description": "German Zipformer \u00b7 streaming.",
+    "family": "kroko",
+    "source": "https://huggingface.co/Banafo/Kroko-ASR",
+    "languages": [
+      "de-DE"
+    ],
+    "license": "Kroko community model: CC-BY-SA (see upstream terms); Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "decoder.onnx",
+        "size": 617489,
+        "sha256": "94a29592b403c53fa2231b478637da1ab4abcef7f5e46e432098416a4a3ed562",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/decoder.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "encoder.onnx",
+        "size": 70091557,
+        "sha256": "6e83993d6967ec7a3498b055b7e85ace85b5d64d1b1e8773cb29a43a11f5edb5",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/encoder.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "joiner.onnx",
+        "size": 336817,
+        "sha256": "28356bff070aea51ab1d725a3278e81d19f9300f860d3248a7014292264df15a",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/joiner.onnx",
+        "role": "joiner"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 5606,
+        "sha256": "86e8370994ff2c01149ba8c4f8709aa93cdc18914b27a717e291e96faf39a6eb",
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-de-kroko-2025-08-06/resolve/887db3d083240198c2d2b99fb66cfcfe6948ced8/tokens.txt",
+        "role": "tokens"
+      },
+      {
+        "name": "silero_vad.onnx",
+        "size": 643854,
+        "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+        "role": "vad"
+      }
+    ]
+  },
+  {
+    "id": "nemotron-3.5-160ms",
+    "repo": "csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11",
+    "version": "b3a4dbde84fba1a13cb4270e6730b525ac6a2db6",
+    "runtime": "2.0.1",
+    "name": "Nemotron 3.5 \u00b7 160 ms",
+    "description": "Multilingual Nemotron \u00b7 160 ms streaming, int8.",
+    "family": "nemotron",
+    "source": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+    "languages": [
+      "de-DE",
+      "en-US"
+    ],
+    "license": "Nemotron 3.5: OpenMDW-1.1; Silero VAD: MIT; sherpa-onnx: Apache-2.0",
+    "files": [
+      {
+        "name": "decoder.int8.onnx",
+        "size": 14978075,
+        "sha256": "19f9c98fc6d0a2c33a65a43b36fdb2e914c26c0aa9764be3aebc502a1e982fb0",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/decoder.int8.onnx",
+        "role": "decoder"
+      },
+      {
+        "name": "encoder.int8.onnx",
+        "size": 657601518,
+        "sha256": "e1b39e5e16bef578a54ed2fba5f031438e000cc36c3ea2ca49d55699d5baebd4",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/encoder.int8.onnx",
+        "role": "encoder"
+      },
+      {
+        "name": "joiner.int8.onnx",
+        "size": 9504438,
+        "sha256": "4101c7c679a0bc30483794b27a059e34e79232aa2068d78d51231a22c8b0d7ce",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/joiner.int8.onnx",
+        "role": "joiner"
+      },
+      {
+        "name": "tokens.txt",
+        "size": 131440,
+        "sha256": "729cc103155bafa785f9cd45746cd41cabe97eab7182fc04d594129587958f8a",
+        "url": "https://huggingface.co/csukuangfj2/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-160ms-int8-2026-06-11/resolve/b3a4dbde84fba1a13cb4270e6730b525ac6a2db6/tokens.txt",
         "role": "tokens"
       },
       {

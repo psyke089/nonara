@@ -100,13 +100,13 @@ Recording overlay/state
 
 **Structure:**
 
-- Discreet NONARA brand/header and Settings action.
+- Supplied NONARA vector wordmark at top left, tinted for the active theme, and an icon Settings action.
 - Search field for note content and titles.
 - Simple list of note cards/rows, with derived or explicit title, a brief text preview, and human-readable date.
 - Group notes quietly into **Today**, **Yesterday**, and **Earlier** (calendar groups follow device-local date).
 - Sort by `updated_at` descending, stable tie-break by `id`.
 - Primary microphone button, secondary pencil/new-text action.
-- A calm empty state, e.g. **“What's on your mind?”** with clear first-capture affordances.
+- Minimal empty state: **“No notes yet”**. No decorative headings, taglines or model switcher on Home.
 - Pending dictated thoughts appear with statuses such as **“Transcribing…”** or **“Couldn't transcribe — Retry”**. Failed Sherpa recordings retain their audio for retry. A pending append appears on its target note rather than as a duplicate note.
 
 Search is initially case-insensitive, over explicit title, derived title, and full body. No mandatory filters, tags, folders, or AI classification. For modest note collections, indexing content in memory is sufficient.
@@ -144,11 +144,13 @@ A tiny ink-drop settling into a note could be a subtle transition after Finish, 
 Keep settings short and grouped:
 
 1. **Appearance:** System / Light / Dark.
-2. **Dictation:** Deutsch or English, Sherpa model size and installed model management. No automatic language detection in v1.
+2. **Dictation:** Recording or Streaming, Deutsch or English, Sherpa model selection and installed model management. Streaming requires a streaming-capable model. Language choices remain explicit; models with automatic detection retain that native limitation.
 3. **Privacy & data:** Export, Import, Trash/recovery, delete data and explanations of local transcription, temporary audio and disabled platform backup.
 4. **About:** Version, licenses, feedback.
 
-Defaults: theme follows system; Sherpa/base; German by default, with English only when explicitly
+Action buttons use locally drawn icons, accessible names, tooltips and at least 48 dp touch targets. Selection chips retain concise labels. Model cards show DE/EN language chips and a Streaming chip where supported. Keep factual status/errors, sizes and licenses; remove promotional/decorative copy.
+
+Defaults: theme follows system; Recording with Sherpa/base; German by default, with English only when explicitly
 selected; temporary audio removed after a successfully persisted transcript; trash retention
 30 days; no cloud sync, analytics or accounts. Do not advertise a keep-audio option in v1.
 
@@ -461,16 +463,21 @@ ordinary note edit/delete operation, not a way to race an already committed work
   packaging on supported devices before adopting a prebuilt distribution.
 - Downloadable int8 models: multilingual Whisper Tiny/Base/Small/Medium/Turbo/Large v3, NVIDIA
   Parakeet TDT 0.6B v3, Canary 180M Flash, Meta Omnilingual ASR CTC 300M and multilingual
-  Nemotron 3.5 ASR Streaming 0.6B (560 ms). German is the primary language and default; every model must support German.
+  Nemotron 3.5 ASR Streaming 0.6B (160/560 ms), German FastConformer transducer/CTC int8 and
+  German Kroko streaming Zipformer. German is the primary language and default; every model must support German.
   English remains optional. Whisper Base remains the default. Keep the
   existing Base/Small IDs and versions compatible with installed models and pending captures.
 - Configure each model family explicitly: Whisper encoder/decoder with `transcribe` and
   `de`/`en` (128 mel bins for Turbo/Large v3); Parakeet encoder/decoder/joiner with
   `nemo_transducer`; Canary with matching source/target language to transcribe without translation;
   Omnilingual with its CTC decoder; Nemotron with its streaming transducer and an explicit language
-  option set before each stream's audio. Omnilingual CTC has no forced-language option.
+  option set before each stream's audio; German FastConformer uses its NeMo transducer or CTC
+  export, and Kroko uses its native streaming transducer with 80 mel bins. Omnilingual CTC has
+  no forced-language option.
   Nemotron consumes the same saved VAD segments through bounded PCM chunks, signals end of input
-  and drains the final frames; it does not start a microphone or stream live audio.
+  and drains the final frames. This saved-segment adapter does not own a microphone; the separate
+  live preview follows the app recorder's saved PCM. Kroko saved segments receive trailing silence
+  to flush their final frames.
   Keep one model loaded.
   Model selection preserves the chosen language; reject incompatible selections.
 - Maintain the full German-capable reference list, including available versions/precisions and
@@ -486,6 +493,26 @@ ordinary note edit/delete operation, not a way to race an already committed work
 - Whisper is non-streaming: show progress/status, never a replaceable live transcript. No periodic
   re-decoding in v1. Preserve punctuation; filter empty output. Any hallucination/repetition filter needs tests
   proving it preserves deliberate repetitions and short answers such as “ja” and “no”.
+
+### Live streaming preview
+
+Streaming is an optional Sherpa capture mode, selected in Settings. It requires an installed,
+German-capable streaming model compatible with the chosen language. Selecting an incompatible
+model or language is disabled/rejected without silently changing language. Settings apply to new
+captures; a running capture retains its model and preview mode.
+
+The app recorder still owns the microphone and saves PCM through the same recovery path.
+Live inference tails those saved files in bounded chunks on a background dispatcher and shows
+replaceable preview text in the recording panel. Endpoint text accumulates once; partials replace
+only the current utterance. Preview text is transient and never appended directly to a note.
+Pause, Finish, discard and ViewModel cleanup cancel preview work and release native resources.
+Finish still queues final VAD transcription from saved audio and the existing receipt-based commit.
+No note/capture storage schema or import/export format changes are needed.
+
+Inference is serialized with saved-audio jobs to limit memory. If preview cannot acquire the
+inference slot or fails, show a concise status and keep audio recording; Finish can still queue
+transcription. Loading/decoding must never block microphone writes or run on the main thread.
+Whisper remains a recording-only model; do not emulate streaming by repeatedly decoding it.
 
 ### 7.7 Model installation
 

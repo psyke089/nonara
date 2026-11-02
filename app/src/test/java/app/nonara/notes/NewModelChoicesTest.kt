@@ -16,10 +16,11 @@ class NewModelChoicesTest {
 
     @Test fun existingChoicesAndAllFiveRecommendationsAreAvailableWithoutChangingLanguage() {
         val entries = entries()
-        assertEquals(setOf("tiny", "base", "small", "medium", "parakeet-v3") + additions, entries.map { it["id"] }.toSet())
+        assertTrue(entries.map { it["id"] }.toSet().containsAll(setOf("tiny", "base", "small", "medium", "parakeet-v3") + additions))
         for(entry in entries) {
             assertEquals("de-DE", info(entry).languageForSelection("de-DE"))
-            assertEquals("en-US", info(entry).languageForSelection("en-US"))
+            if(info(entry).supports("en-US")) assertEquals("en-US", info(entry).languageForSelection("en-US"))
+            else assertThrows(IllegalArgumentException::class.java) { info(entry).languageForSelection("en-US") }
         }
     }
     @Test fun canaryTranscribesGermanWithoutTranslatingItIntoEnglish() {

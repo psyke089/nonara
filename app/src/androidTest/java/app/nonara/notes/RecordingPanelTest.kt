@@ -26,12 +26,12 @@ class RecordingPanelTest {
         compose.onNodeWithText("Recording",substring=false).assertIsDisplayed()
         compose.onNodeWithText("01:05").assertIsDisplayed()
         compose.onNodeWithContentDescription("Microphone activity").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription,"Sound detected"))
-        compose.onNodeWithText("Pause",substring=false).performClick()
+        compose.onNodeWithContentDescription("Pause").performClick()
         compose.onNodeWithText("Recording paused").assertIsDisplayed()
         compose.onNodeWithContentDescription("Microphone activity").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription,"Microphone paused"))
-        compose.onNodeWithText("Resume").performClick()
+        compose.onNodeWithContentDescription("Resume").performClick()
         compose.onNodeWithText("Recording",substring=false).assertIsDisplayed()
-        compose.onNodeWithText("Finish",substring=false).performClick()
+        compose.onNodeWithContentDescription("Finish").performClick()
         compose.onNodeWithText("Recording finished").assertIsDisplayed()
     }
 }

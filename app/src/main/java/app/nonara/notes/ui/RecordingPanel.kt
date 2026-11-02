@@ -21,7 +21,7 @@ import app.nonara.notes.recordingTime
 
 @Composable
 fun RecordingPanel(paused:Boolean, busy:Boolean, elapsed:Long, level:Float, label:String,
-                   onPause:()->Unit, onFinish:()->Unit, onDiscard:()->Unit) {
+                   onPause:()->Unit, onFinish:()->Unit, onDiscard:()->Unit, preview:String="", previewStatus:String="") {
     val ink=MaterialTheme.colorScheme.primary
     val displayedLevel by animateFloatAsState(if(paused) 0f else level, label="Microphone level")
     Surface(shape=RoundedCornerShape(32.dp), color=MaterialTheme.colorScheme.surface) {
@@ -41,13 +41,13 @@ fun RecordingPanel(paused:Boolean, busy:Boolean, elapsed:Long, level:Float, labe
                     drawLine(ink.copy(alpha=if(paused) 0.25f else 0.85f),Offset(x,(size.height-height)/2),Offset(x,(size.height+height)/2),4.dp.toPx(),StrokeCap.Round)
                 }
             }
-            Text(if(paused) "Your microphone is paused." else "Microphone on · speak naturally",style=MaterialTheme.typography.titleMedium)
-            Text("Your audio stays on this device. Finish to turn your recording into a note.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick=onPause,enabled=!busy,modifier=Modifier.weight(1f).heightIn(min=52.dp)) { Text(if(paused) "Resume" else "Pause") }
-                Button(onClick=onFinish,enabled=!busy,modifier=Modifier.weight(1f).heightIn(min=52.dp)) { Text("Finish") }
+            if(previewStatus.isNotBlank()) Text(previewStatus,style=MaterialTheme.typography.labelMedium)
+            if(preview.isNotBlank()) Text(preview,style=MaterialTheme.typography.bodyLarge,modifier=Modifier.fillMaxWidth().heightIn(max=160.dp).verticalScroll(rememberScrollState()).semantics { contentDescription="Live transcript preview" })
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(16.dp,Alignment.CenterHorizontally)) {
+                IconAction(if(paused) "Resume" else "Pause",if(paused) ActionGlyph.PLAY else ActionGlyph.PAUSE,onPause,enabled=!busy,prominent=true)
+                IconAction("Finish",ActionGlyph.CHECK,onFinish,enabled=!busy,prominent=true)
+                IconAction("Discard recording",ActionGlyph.DELETE,onDiscard,enabled=!busy)
             }
-            TextButton(onClick=onDiscard,enabled=!busy) { Text("Discard recording",color=MaterialTheme.colorScheme.error) }
         }
     }
 }
