@@ -183,7 +183,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                     IconAction("Export notes",ActionGlyph.EXPORT,{export.launch("nonara-notes.zip")})
                     IconAction("Trash",ActionGlyph.TRASH,{model.page="trash"})
                 }
-                Text("NONARA 0.3.2",style=MaterialTheme.typography.labelSmall)
+                Text("NONARA 0.4.0",style=MaterialTheme.typography.labelSmall)
                 Text("Speech libraries: sherpa-onnx / Apache-2.0, ONNX Runtime / MIT, Whisper / MIT, NVIDIA Parakeet, Canary, FastConformer / CC-BY-4.0, Omnilingual / Apache-2.0, Nemotron / OpenMDW-1.1, Kroko / CC-BY-SA, Silero VAD / MIT. YAML: SnakeYAML / Apache-2.0.",style=MaterialTheme.typography.bodySmall)
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
