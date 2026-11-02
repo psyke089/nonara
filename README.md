@@ -14,8 +14,8 @@ available variants, sources and which choices Nonara offers.
 ## Status
 
 The app includes Home/search, a Markdown editor with automatic saves, trash/restore, ZIP
-import/export, theme settings, model downloads, recoverable Sherpa recording/transcription,
-and optional Android live dictation. Android 13 / API 33 is the minimum.
+import/export, theme settings, model downloads, and recoverable Sherpa recording/transcription
+as the only dictation backend. Android 13 / API 33 is the minimum.
 
 The [product and technical specification](docs/SPEC.md) remains the target. See
 [implementation status](docs/IMPLEMENTATION.md) for remaining work and validation limits.

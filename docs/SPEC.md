@@ -32,7 +32,7 @@ Five principles govern the experience:
 - **Agreed:** Name NONARA; calm/Zen product direction; three principal screens (Home, Editor, Settings); recording as a focused overlay/state; text-first notes; Markdown body with YAML front matter; one file per note; plain-text editing; automatic saving; local-first approach; no folders, tags, account requirement, or cloud sync in v1.
 - **Agreed brand direction:** Black Gothic/quill monogram for Android launcher; handcrafted burgundy monogram/lettering inside the app; parchment and warm neutral colors; restrained ink motif.
 - **Implementation defaults:** UUIDv7 IDs, private app-specific file storage, in-memory search index, 400 ms edit debounce, 30-day trash, WorkManager for retryable Sherpa transcription, Jetpack Compose/Kotlin/DataStore. Timing and performance values are provisional tuning targets.
-- **Resolved platform/privacy choices:** API 33 minimum; German/English on-device recognition; Sherpa with recoverable recordings by default; optional Android live recognition with explicit capability differences; network access for explicit model downloads; no audio/transcript uploads; platform backup disabled; successful-capture audio deleted after durable commit.
+- **Resolved platform/privacy choices:** API 33 minimum; German/English on-device recognition; Sherpa as the only dictation backend with recoverable recordings; network access for explicit model downloads; no audio/transcript uploads; platform backup disabled; successful-capture audio deleted after durable commit.
 - **Open decisions:** Exact typography/accessibility-tested colors, explicit-title editing UX, and performance tuning. Direct folder access remains outside v1.
 
 ---
@@ -107,7 +107,7 @@ Recording overlay/state
 - Sort by `updated_at` descending, stable tie-break by `id`.
 - Primary microphone button, secondary pencil/new-text action.
 - A calm empty state, e.g. **“What's on your mind?”** with clear first-capture affordances.
-- Pending dictated thoughts appear with statuses such as **“Transcribing…”** or **“Couldn't transcribe — Retry”**. Android live failures distinguish recoverable recognized text from speech for which no audio is retained. A pending append appears on its target note rather than as a duplicate note.
+- Pending dictated thoughts appear with statuses such as **“Transcribing…”** or **“Couldn't transcribe — Retry”**. Failed Sherpa recordings retain their audio for retry. A pending append appears on its target note rather than as a duplicate note.
 
 Search is initially case-insensitive, over explicit title, derived title, and full body. No mandatory filters, tags, folders, or AI classification. For modest note collections, indexing content in memory is sufficient.
 
@@ -133,7 +133,7 @@ Search is initially case-insensitive, over explicit title, derived title, and fu
 - Show a modest waveform or levels indicator and a readable recording state; avoid excessive animation.
 - Controls: **Pause/Resume**, **Cancel**, **Finish**.
 - Cancel asks whether to discard an active recording.
-- Finish releases the microphone, checkpoints available audio/text, schedules transcription/commit and returns control promptly. Sherpa retains audio for retry; Android live retains recognized text only. See section 7 for the mode-specific guarantees.
+- Finish releases the microphone, checkpoints available audio, schedules transcription/commit and returns control promptly. Sherpa retains audio for retry. See section 7 for the recovery guarantees.
 - No forced transcription-review dialog and no manual Save button.
 - The user can start another thought without waiting for the previous one to transcribe.
 
@@ -144,11 +144,13 @@ A tiny ink-drop settling into a note could be a subtle transition after Finish, 
 Keep settings short and grouped:
 
 1. **Appearance:** System / Light / Dark.
-2. **Dictation:** Mode (Sherpa recoverable recording / Android live), Deutsch or English, Sherpa model size and installed model management. No automatic language detection in v1.
+2. **Dictation:** Deutsch or English, Sherpa model size and installed model management. No automatic language detection in v1.
 3. **Privacy & data:** Export, Import, Trash/recovery, delete data and explanations of local transcription, temporary audio and disabled platform backup.
 4. **About:** Version, licenses, feedback.
 
-Defaults: theme follows system; Sherpa/base; system language if German/English, otherwise German; temporary audio removed after a successfully persisted transcript; trash retention 30 days; no cloud sync, analytics or accounts. Do not advertise a keep-audio option in v1.
+Defaults: theme follows system; Sherpa/base; German by default, with English only when explicitly
+selected; temporary audio removed after a successfully persisted transcript; trash retention
+30 days; no cloud sync, analytics or accounts. Do not advertise a keep-audio option in v1.
 
 ---
 
@@ -264,7 +266,7 @@ filesDir/                     # App-private persistent root
 ```
 
 - **`notes/`:** Completed human-readable Markdown notes; permanent source of truth.
-- **`pending/`:** Durable capture metadata, recognized segments and (Sherpa only) audio while pending, processing, failed or awaiting commit. Android live captures retain recognized text, never promise audio recovery.
+- **`pending/`:** Durable capture metadata, recognized segments and audio while pending, processing, failed or awaiting commit.
 - **`trash/`:** Soft-deleted `.md` files, restorable by ID; track deletion time in a small operational record or sidecar so cleanup is deterministic without modifying the note's original metadata.
 - **`recovery/`:** Optional compact journal for user edits that have not yet been committed to their canonical note file. Must be recoverable and bounded.
 
@@ -279,7 +281,7 @@ note-format migration.
 |---|---|---|
 | Completed note body + metadata | `notes/*.md` | **Yes** |
 | Deleted notes during retention | `trash/*.md` | **Yes, until purged** |
-| Capture records, recognized text and available audio | `pending/` | **Yes, while incomplete; Android audio is unavailable** |
+| Capture records, recognized text and audio | `pending/` | **Yes, while incomplete** |
 | Editor draft before commit | Recovery journal | **Temporary durable recovery** |
 | Search tokens, list preview, derived title | In-memory index | No; rebuildable |
 | Theme / dictation preferences | Jetpack DataStore | Yes, for preferences |
@@ -311,32 +313,28 @@ v1 owns its app-private note directory, so concurrent writers should be rare. St
 1. A failed replacement never destroys the last valid committed note.
 2. A newer edit cannot be overwritten by an older asynchronous save.
 3. A UI status of **Saved** means the latest displayed revision is persisted.
-4. Durable Sherpa audio and recognized segment journals remain recoverable until commit. Android live mode recovers durable text only, not unrecognized speech.
+4. Durable Sherpa audio and recognized segment journals remain recoverable until commit.
 5. A retry must not create duplicate notes or duplicate appended text.
 
 ---
 
 ## 7. Dictation and speech recognition
 
-### 7.1 Modes and capability boundary
+### 7.1 Single backend and capability boundary
 
 Text is the permanent result; audio is a temporary recovery artifact. All recognition stays on
-this device. The two modes share UI/status semantics, not an identical microphone contract:
+this device. Sherpa is the only dictation backend:
 
-| Mode | Microphone owner | Input to recognizer | Retry after process death |
+| Backend | Microphone owner | Input to recognizer | Retry after process death |
 |---|---|---|---|
-| Sherpa (default) | App AudioRecorder | Durable 16 kHz mono PCM16 chunks | Retained audio + segment journal |
-| Android live (optional) | On-device SpeechRecognizer service | Service microphone stream | Durable recognized text only |
+| Sherpa | App AudioRecorder | Durable 16 kHz mono PCM16 chunks | Retained audio + segment journal |
 
-Use Sherpa for the product's record → Finish → retryable transcription flow. Android live
-recognition cannot be assumed to decode arbitrary saved audio: support for injected input is
-service-dependent. V1 does not depend on it or record with a second competing microphone.
-Before choosing Android live, explain its gaps and lack of saved-audio retry in plain language.
-Do not silently switch a recoverable recording to live-only recognition. No automatic engine
-switching in v1; offer an explicit mode change for the next capture if the chosen mode is not
-ready. Never fall back to a generic/cloud recognizer.
+Use Sherpa for the record → Finish → retryable transcription flow. Never fall back to a
+generic/cloud recognizer or another on-device speech service. A new recording requires an
+installed model that supports the selected language; when unavailable, direct the user to
+Settings. Never download a model automatically when dictation starts.
 
-Settings changes to mode/language/model apply to new captures. Existing jobs retain their pinned
+Settings changes to language/model apply to new captures. Existing jobs retain their pinned
 configuration. Only one microphone session is active; a new capture may begin after Finish has
 released it while earlier Sherpa jobs wait/process. Serialize inference jobs to limit memory.
 
@@ -350,13 +348,10 @@ released it while earlier Sherpa jobs wait/process. Serialize inference jobs to 
   second and on pause/finish. Keep the currently written chunk identifiable; recover complete
   samples only. Never imply the uncheckpointed tail is guaranteed after abrupt termination.
 - Pause closes/checkpoints capture input and releases the microphone. Resume starts a new chunk;
-  silence during the pause is not part of the recording. Android pause stops/flushed its current
-  cycle, journals available finals and resumes with a new attempt only on explicit Resume.
-  Resume is disabled while the previous cycle is still draining.
+  silence during the pause is not part of the recording. Resume is disabled while the previous
+  capture is still stopping.
 - Finish first releases capture, finalizes its durable record, then returns control promptly.
-  Sherpa enqueues transcription; Android waits up to 15 seconds for a final/error and persists
-  available text. If its flush fails/times out, preserve recognized text and show possible loss
-  of unfinished speech; never invent a final.
+  Sherpa enqueues transcription; never wait for inference or invent a final.
 - Cancel marks the capture discarded before cancelling jobs/deleting its artifacts. No note
   insertion occurs before Finish. Workers must recheck discard state under the commit lock.
 - Initial recording limit: 30 minutes of captured audio per thought, with a visible warning
@@ -376,43 +371,39 @@ operational format independently of permanent notes. Unknown future records are 
 shown as unsupported, not overwritten.
 
 State path: recording ↔ paused; Finish from either → pending → transcribing → committing → completed. Interrupted,
-failed and discarded are explicit alternatives; retry returns failed work to pending. Android
-live journals recognition during recording and skips batch transcription after Finish. A state
+failed and discarded are explicit alternatives; retry returns failed work to pending. A state
 change and its referenced artifacts must be ordered so recovery never references missing data.
 
 ### 7.3 Contracts, events and cancellation
 
-Do not force saved-audio transcription and service-owned microphone capture behind one `start()`
-interface. Use these separate responsibilities:
+Do not force saved-audio transcription and microphone capture behind one `start()` interface.
+Use these separate responsibilities:
 
 - `AudioRecorder`: permission-aware capture, pause/resume, bounded chunk persistence and finish.
 - `TranscriptionEngine`: availability and decode of a durable capture; never opens a microphone.
-- `AndroidLiveEngine`: availability, start, stop/drain and release; owns the service microphone.
 - `DictationCoordinator`: durable state, deduplication, retries, scheduling and note commit.
 
 Availability is READY / NEEDS_MODEL / UNSUPPORTED / UNKNOWN, with actionable reasons. A missing
-support-check implementation is UNKNOWN rather than proof the language is unsupported. No
-availability check starts a microphone/download. Unknown Android support requires explicit Try.
+model installation is NEEDS_MODEL; an incompatible model/language pair is UNSUPPORTED. No
+availability check starts a microphone or a download.
 
-Each processing/live attempt has a unique attempt ID. Events carry that ID and comprise Partial
-(replaceable preview), Final (immutable text and stable segment ID), Error (typed category and
-possible speech loss), and Ended (one terminal reason). Reject callbacks from older attempts.
-Empty finals are omitted; a final/error/end clears partials. Sherpa segments have persisted
-boundaries and stable identities across retries; replace a retry's uncommitted result for the
-same segment instead of appending duplicates. Never use transcript text equality for deduplication.
+Each processing attempt has a unique attempt ID. Events carry that ID and comprise Final
+(immutable text and stable segment ID), Error (typed category), and Ended (one terminal
+reason). Reject callbacks from older attempts. Empty finals are omitted. Sherpa segments have
+persisted boundaries and stable identities across retries; replace a retry's uncommitted
+result for the same segment instead of appending duplicates. Never use transcript text equality
+for deduplication.
 
 A coordinator-owned single consumer journals finals in order, then projects UI state. Compose
-collectors must not own commits or replay them after rotation. Use bounded buffers; coalesce
-partials only. Never silently drop finals or block the audio/main thread on storage. Sherpa
-reads one segment at a time from disk, avoiding an unbounded RAM audio queue. Android pauses
-restarts until the last final is accepted by the journal consumer; a storage failure stops it.
+collectors must not own commits or replay them after rotation. Use bounded buffers. Never
+silently drop finals or block the audio/main thread on storage. Sherpa reads one segment at a
+time from disk, avoiding an unbounded RAM audio queue; a storage failure stops processing.
 
-Start returns when ready or fails through one typed path; it cannot wait for the full session.
-Stop is idempotent and disables scheduled restarts immediately. Stop during loading must cancel
-acquisition so a microphone cannot open later. End an attempt exactly once; no transcript event
-may follow Ended. Release is idempotent, terminal and releases the microphone independently of
-slow event delivery. Bound Android draining to 15 seconds; late callbacks are ignored afterward.
-Do not hold lifecycle locks across loading/draining that would prevent cancellation.
+Start returns when the microphone is ready or fails through one typed path; it cannot wait for
+the full session. Stop is idempotent, releases the microphone and cancels scheduled work. Stop
+during startup must cancel acquisition so a microphone cannot open later. End an attempt
+exactly once; no transcript event may follow Ended. Release is idempotent and terminal. Do not
+hold lifecycle locks across starting/stopping that would prevent cancellation.
 
 Expose capture state (idle/loading/listening/paused/stopping/interrupted) separately from job
 state (pending/transcribing/committing/failed/completed). A processing indicator must not imply
@@ -479,7 +470,7 @@ ordinary note edit/delete operation, not a way to race an already committed work
   Omnilingual with its CTC decoder; Nemotron with its streaming transducer and an explicit language
   option set before each stream's audio. Omnilingual CTC has no forced-language option.
   Nemotron consumes the same saved VAD segments through bounded PCM chunks, signals end of input
-  and drains the final frames; it does not introduce a separate live-recording mode.
+  and drains the final frames; it does not start a microphone or stream live audio.
   Keep one model loaded.
   Model selection preserves the chosen language; reject incompatible selections.
 - Maintain the full German-capable reference list, including available versions/precisions and
@@ -492,42 +483,15 @@ ordinary note edit/delete operation, not a way to race an already committed work
   the segmentation/configuration so retry results retain stable segment identities.
 - Keep one decode segment plus bounded read-ahead in RAM; the full recording remains on disk.
   Start at four inference threads and benchmark fewer before exposing tuning controls.
-- Whisper is non-streaming. Show progress/status, not `Partial("…")`. No periodic re-decoding in
-  v1. Preserve punctuation; filter empty output. Any hallucination/repetition filter needs tests
+- Whisper is non-streaming: show progress/status, never a replaceable live transcript. No periodic
+  re-decoding in v1. Preserve punctuation; filter empty output. Any hallucination/repetition filter needs tests
   proving it preserves deliberate repetitions and short answers such as “ja” and “no”.
 
-### 7.7 Android live recognition
-
-- Check `isOnDeviceRecognitionAvailable()` before creating only
-  `SpeechRecognizer.createOnDeviceSpeechRecognizer()`. An API 33 device may have no service.
-- All recognizer lifecycle calls run on the main thread; register listeners before commands,
-  handle service disconnection and call `destroy()` on release. Only the recognizer owns the
-  microphone; never run AudioRecord in parallel to try to retain the same session's audio.
-- Use a free-form intent with explicit `de-DE` / `en-US`, `EXTRA_PREFER_OFFLINE = true` and
-  `EXTRA_PARTIAL_RESULTS = true`. Use the same configuration for checks/downloads/listening.
-  The on-device factory, not the offline preference hint, enforces the backend choice.
-- Use `checkRecognitionSupport()` and installed on-device languages for readiness. Distinguish
-  installed, pending and downloadable packs; unsupported support checking yields UNKNOWN.
-- Offer `triggerModelDownload()` after an explicit user action. On API 33, recheck on return
-  and provide Retry; the download-listener overload needs an API 34 guard.
-- Take the most likely nonempty candidate. Partials are optional and never durable finals.
-  Journal finals before restarting; show honest interim/final transcript previews in overlay.
-- Restart only after terminal onResults/onError, never on end-of-speech alone. Retry no-match
-  or speech timeout after 250 ms. For busy/disconnected errors allow three consecutive retries
-  at 500 ms, 1 s and 2 s (reset after success); recreate disconnected service as needed.
-  Rate limiting, exhausted retries and other unclassified failures stop visibly.
-- Permission denial/revocation stops immediately; unavailable language opens model setup;
-  unsupported language shows unavailability. Stop/pause/finish/release cancels scheduled restarts
-  first. User stop, storage failure or interruption never triggers an engine switch.
-- On process death, restore durable recognized text as an interrupted capture. Unrecognized
-  speech cannot be retried; offer Finish recognized text, Resume speaking or Discard. No
-  automatic conversion of this capture into a supposedly recoverable Sherpa recording.
-
-### 7.8 Model installation
+### 7.7 Model installation
 
 Production Sherpa models are downloaded after an explicit action, never bundled in the APK or
 silently fetched by opening dictation. A fresh install may require connectivity; installed
-models support offline recognition. Show mode availability and download/installed size first.
+models support offline recognition. Show model availability and download/installed size first.
 
 Use a pinned catalog with ID/version, runtime compatibility, languages, license/provenance and
 every required file (family-specific model components, tokens, Silero VAD and metadata), sizes and SHA-256.
@@ -565,10 +529,9 @@ Show installed versions/storage; refuse deletion while loaded or pinned by pendi
 the user explicitly discards those jobs. Shared VAD deletion cannot break another installed
 model. Failed model loading revalidates installation and offers repair, not a download loop.
 
-### 7.9 Permissions and lifecycle
+### 7.8 Permissions and lifecycle
 
-Declare RECORD_AUDIO and INTERNET plus a manifest queries intent for
-`android.speech.RecognitionService`. Request microphone permission only on dictation action;
+Declare RECORD_AUDIO and INTERNET. Request microphone permission only on dictation action;
 handle denial/permanent denial without blocking typed notes. Network access is allowed for
 explicit model provisioning; never upload notes, audio or transcripts. No cloud STT in v1.
 
@@ -582,12 +545,9 @@ consumer. A device-specific inability to detect an interruption must be reported
 Saved-audio inference may continue as eligible WorkManager work after the UI leaves; this is
 separate from microphone use. Lifecycle cleanup must release capture even if inference/journal
 work is slow. ViewModel clearing/process death cannot guarantee the uncheckpointed tail; never
-promise recovery beyond successfully persisted audio/recognized text. Live Android recognition
-can have restart gaps. Disclose the separate trust boundary of the device-supplied service.
+promise recovery beyond successfully persisted audio.
 
-References: [Android SpeechRecognizer](https://developer.android.com/reference/android/speech/SpeechRecognizer),
-[RecognizerIntent input support](https://developer.android.com/reference/android/speech/RecognizerIntent#EXTRA_AUDIO_SOURCE),
-[Sherpa Whisper](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/whisper/index.html),
+References: [Sherpa Whisper](https://k2-fsa.github.io/sherpa/onnx/pretrained_models/whisper/index.html),
 [Sherpa Kotlin VAD](https://github.com/k2-fsa/sherpa-onnx/blob/master/sherpa-onnx/kotlin-api/Vad.kt).
 
 ---
@@ -607,7 +567,7 @@ Repositories / coordinators
   NoteRepository | CaptureRepository | PreferencesRepository
            ↓
 Storage and platform adapters
-  NoteCodec + NoteFileStore | AudioRecorder / AndroidLiveEngine + TranscriptionEngine | DataStore
+  NoteCodec + NoteFileStore | AudioRecorder + TranscriptionEngine | DataStore
            ↓
   Markdown files           Pending audio/jobs            Preferences
 ```
@@ -622,7 +582,7 @@ Storage and platform adapters
 | `NoteRepository` | Creation, updates, observing, search, cache invalidation |
 | `CaptureRepository` | Pending audio records, state transitions, retries, idempotent commit |
 | `TranscriptionEngine` | Saved-audio decode adapter; microphone-free |
-| `AudioRecorder` / `AndroidLiveEngine` | Mode-specific foreground microphone ownership and pause/resume/finish |
+| `AudioRecorder` | Foreground microphone ownership, durable PCM capture and pause/resume/finish |
 | `PreferencesRepository` | DataStore-backed user preferences |
 | `HomeViewModel` | List/search state, pending items, navigation actions |
 | `EditorViewModel` | Read/edit state, autosave coordination, append entry point |
@@ -654,7 +614,7 @@ app/src/main/java/app/nonara/notes/
 ├── data/notes/          # NoteFileStore, NoteRepository implementation
 ├── data/capture/        # Pending capture store, transcription coordinator
 ├── data/preferences/    # DataStore preferences
-├── platform/audio/      # Recorder, Android live service adapter, permissions
+├── platform/audio/      # Recorder and permissions
 ├── feature/home/        # Home screen + ViewModel
 ├── feature/editor/      # Editor screen + ViewModel
 ├── feature/recording/   # Overlay + ViewModel
@@ -672,7 +632,7 @@ A single Android app module is sufficient initially. `NoteCodec` should remain i
 - Sort by `updated_at` descending, then `id` for deterministic ties.
 - Search explicit/derived title and body, case-insensitively; optimize only after measuring typical datasets.
 - Previews, grouping by local calendar day, search matches, and derived titles are **computed**, not stored in Markdown metadata.
-- Pending new-note cards are projected from `pending/`; pending appends decorate their target note instead of duplicating it. Retry actions distinguish Sherpa audio retry from Android recognized-text recovery.
+- Pending new-note cards are projected from `pending/`; pending appends decorate their target note instead of duplicating it. Retry actions use the retained Sherpa audio.
 - A malformed note should not crash the whole collection scan; quarantine it logically in the UI while preserving its file bytes.
 - Rebuildability is a strict requirement: clearing the index must leave all user content intact.
 
@@ -685,26 +645,26 @@ A single Android app module is sufficient initially. `NoteCodec` should remain i
 ```kotlin
 data class AppSettings(
     val theme: ThemeMode,             // SYSTEM
-    val dictationMode: DictationMode, // SHERPA_RECOVERABLE by default; ANDROID_LIVE optional
-    val languageTag: String,          // de-DE or en-US; system language if supported, else de-DE
-    val sherpaModelSize: ModelSize,   // BASE by default; SMALL optional
+    val languageTag: String,          // de-DE by default; en-US only when explicitly selected
+    val sherpaModelSize: ModelSize,   // BASE by default
     val trashRetentionDays: Int       // 30
 )
 ```
 
-Use Preferences DataStore. Explain the two dictation modes and model provisioning. No automatic
-language detection, automatic capability-downgrading fallback, cloud recognition or long-term
-audio-retention option in v1. These are resolved scope choices, not undecided settings.
+Use Preferences DataStore. Explain model provisioning and the single Sherpa backend. No automatic
+language detection, automatic capability-downgrading fallback, alternate speech service, cloud
+recognition or long-term audio-retention option in v1. These are resolved scope choices, not
+undecided settings.
 
 ### 10.2 Privacy, backup and retention
 
 - No accounts, analytics, ads or cloud sync. Network access is allowed, with v1 transfers limited
   to explicit model provisioning. Models remain local; never upload audio, text or notes.
-- Both recognition modes use on-device engines. Initial setup can need connectivity; installed
-  models must be tested offline. Android service availability/behavior is device-dependent.
+- Sherpa recognition runs on device. Initial setup can need connectivity; installed models must
+  be tested offline.
 - Keep raw Sherpa audio private and delete after durable note commit. Retain failed/interrupted
-  recordings until explicit Retry/Discard or completion. Android retains recognized text only.
-  Show pending storage usage; no silent age-based purge of failed captures in v1.
+  recordings until explicit Retry/Discard or completion. Show pending storage usage; no silent
+  age-based purge of failed captures in v1.
 - Platform cloud backup and automatic device transfer are disabled by default. Keep
   `android:allowBackup="false"` and configure supported backup/data-extraction rules to exclude
   notes, drafts, pending captures, models and preferences. Verify actual device behavior; do not
@@ -759,7 +719,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - Home: browse notes, derived titles, timestamps, search, pending capture status.
 - Create/edit plain-text notes; optional custom titles; reliable autosave.
 - Microphone recording with Pause/Resume, Cancel/Discard, Finish.
-- On-device Sherpa transcription with durable retryable audio, plus explicitly selected Android live dictation with text-only recovery; creates/appends editable note text.
+- On-device Sherpa transcription with durable retryable audio; creates/appends editable note text.
 - Recovery from failed/interrupted transcription and interrupted writes.
 - Soft delete, Undo, Trash, restore, automatic retention purge.
 - Settings: theme, supported language choice, privacy explanations, data export/import.
@@ -773,7 +733,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - Complicated rich-text or WYSIWYG editor.
 - Mandatory custom titles or explicit Save buttons.
 - Home-screen widgets and shortcuts beyond essential launcher functionality (possible later).
-- Long-term original-audio archive, cloud STT, automatic language detection, background microphone capture, and automatic switching between modes with different recovery guarantees.
+- Long-term original-audio archive, cloud STT, automatic language detection, background microphone capture, and automatic switching to another recognizer.
 
 ---
 
@@ -797,7 +757,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - [ ] First microphone use handles grant/deny/retry appropriately.
 - [ ] Pause, Resume, Finish, and Cancel have predictable UI and recording behavior.
 - [ ] Interruption stops the microphone and recovers checkpointed audio/text, with possible uncheckpointed-tail loss disclosed.
-- [ ] Pending captures remain visible; Sherpa retries retained audio, Android recovers recognized text and explains missing audio.
+- [ ] Pending captures remain visible; Sherpa retries retained audio and reports failures.
 - [ ] A new successful transcription creates one note, even after crash/retry.
 - [ ] Dictating into an existing note does not replace newer user edits or insert text twice.
 - [ ] Sherpa audio is deleted only after note/receipt/completed-record persistence; cleanup retries cannot insert twice.
@@ -811,7 +771,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - [ ] Screen-reader labels, touch targets, contrast, and large fonts are verified.
 - [ ] Export/import round-trips permanent note files without silent loss or overwrite.
 - [ ] Deleted note can be restored with the same identity and body.
-- [ ] UI accurately describes offline provisioning, on-device recognition, mode-specific recovery and disabled platform backup.
+- [ ] UI accurately describes offline provisioning, on-device recognition, retryable Sherpa recovery and disabled platform backup.
 
 ---
 
@@ -823,18 +783,18 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - Primary physical device: OnePlus 5T (`ONEPLUS A5010`), Android 13/API 33. A Pixel 6 can be an
   additional benchmark, not a substitute. Use no emulator without explicit user approval.
 - JVM tests cover readiness combinations, start/stop during loading, repeated stop/release,
-  pause/resume, stale callbacks, terminal-event uniqueness, journal backpressure, retry limits,
-  segmentation/retry identity, no-match/silence, and cancellation during pending/commit.
-- Device tests cover permission denial/revocation, missing service/language, unsupported support
-  checking, airplane mode after installation, calls/capture contention, rotation/backgrounding,
-  screen lock and rapid start/stop. Verify stop releases the mic and cancels restarts.
+  pause/resume, journal backpressure, retry limits, segmentation/retry identity,
+  no-match/silence, and cancellation during pending/commit.
+- Device tests cover permission denial/revocation, missing installed model, incompatible
+  model/language, airplane mode after installation, calls/capture contention,
+  rotation/backgrounding, screen lock and rapid start/stop. Verify stop releases the mic.
 - Model tests cover missing components, checksum failure, interrupted/resumed downloads with
   changed remote identity, disk full, atomic publication, cancellation, shared VAD references
   and attempts to delete models pinned by a pending job.
 - Use locally recorded or user-supplied German/English test clips and versioned reference text:
   short answers, intentional repetition, numbers, punctuation, silence, noise and continuous
   speech; 30-second and 5-minute samples. No third-party audio downloads. Inject saved PCM into
-  Sherpa; test Android's service microphone separately rather than assuming file injection.
+  Sherpa rather than assuming live file injection.
 - Provisional OnePlus 5T base-model gates: zero nonempty finals from silence; clean-speech WER
   ≤ 20% for each language (lowercase, punctuation ignored); median RTF < 0.5 over repeated
   5-minute clips; p95 inference latency ≤ 5 seconds per closed 10-second segment; peak process
@@ -858,9 +818,9 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 2. **File store and reliability:** UUID filenames, safe directory handling, atomic commits, revision serialization, recovery, trash.
 3. **Text experience:** Home, search, plain-text editor, autosave states, preferences, basic styling.
 4. **Import/export:** Portable ZIP export, safe import, index rebuild, privacy/backup configuration.
-5. **Platform/capture:** Use minSdk 33; add microphone/network/service-query declarations; foreground PCM capture, pause/resume, interruption checkpoints and overlay.
+5. **Platform/capture:** Use minSdk 33; add microphone/network declarations; foreground PCM capture, pause/resume, interruption checkpoints and overlay.
 6. **Sherpa spike and provisioning:** Pin runtime/models; temporarily provision a verified base model in private storage for development (not a bundled production model); benchmark on the OnePlus 5; build explicit downloads with verification/atomic installation.
-7. **Transcription/recovery:** Segment checkpoints, WorkManager, atomic receipt-based insertion, recovery and cleanup; then optional Android live mode with its separate guarantees.
+7. **Transcription/recovery:** Segment checkpoints, WorkManager, atomic receipt-based insertion, recovery and cleanup.
 8. **Polish and QA:** Accessibility, dark mode, low-storage/crash testing, performance, quiet animations, release validation.
 
 ---
@@ -874,14 +834,14 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 | Notes editing | Exact optional-title editing UX; no mandatory title or Markdown highlighting |
 | Visual tokens | Final body typography, dark palette, contrast and spacing; supplied launcher art remains authoritative |
 
-Engine choices, offline recognition, API 33 minimum, explicit model downloads, audio cleanup and
-backup defaults are resolved above. Changes to these choices require updating this specification;
+The Sherpa-only engine choice, offline recognition, API 33 minimum, explicit model downloads,
+audio cleanup and backup defaults are resolved above. Changes to these choices require updating this specification;
 do not retain contradictory alternative contracts in separate files.
 
 ---
 
 ## 16. Definition of success
 
-A user should be able to open NONARA, type or speak one thought, leave, and later retrieve it without worrying about its name, location, or whether it was saved. The implementation is successful when **completed thoughts remain portable Markdown files, Sherpa recordings and recognized Android text recover within their documented durability limits, and the interface stays calm when work fails**.
+A user should be able to open NONARA, type or speak one thought, leave, and later retrieve it without worrying about its name, location, or whether it was saved. The implementation is successful when **completed thoughts remain portable Markdown files, Sherpa recordings recover within their documented durability limits, and the interface stays calm when work fails**.
 
 *End of specification.*

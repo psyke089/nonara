@@ -19,7 +19,7 @@ class MicrophoneFeedbackTest {
         val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main)
         val recorder=PcmRecorder(context,scope)
         try {
-            val capture=Captures(context).create(null,null,"sherpa","en-US","base")
+            val capture=Captures(context).create(null,null,"en-US","base")
             val feedback=CompletableDeferred<Float>()
             withContext(Dispatchers.Main) {
                 recorder.start(capture.getString("id"),{ feedback.complete(it) },{ feedback.completeExceptionally(IllegalStateException(it)) })

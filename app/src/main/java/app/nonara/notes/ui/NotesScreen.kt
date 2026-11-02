@@ -65,9 +65,9 @@ fun NotesScreen(model:AppModel=viewModel()) {
     val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { it?.let(model::export) }
     val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model::import) }
     fun record() {
-        if(model.mode=="sherpa" && model.modelSize !in model.installed) {
+        if(!model.models.ready(model.modelSize) || !model.models.supports(model.modelSize,model.language)) {
             model.page="settings"
-            model.error="Choose and download a speech model before your first recording. Choose a model below."
+            model.error="Choose and download a compatible speech model in Settings before your first recording."
             return
         }
         if(context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED) model.start(if(model.page=="editor") text.selection.end else null)
@@ -90,7 +90,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 item { Column(Modifier.padding(top=22.dp,bottom=12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                     Text("A little room\nfor your thoughts.",style=MaterialTheme.typography.displaySmall,fontFamily=FontFamily.Serif)
                     Text("Write it down. Say it out loud. Keep it here.",color=MaterialTheme.colorScheme.onSurfaceVariant)
-                    SuggestionChip(onClick={model.page="settings"},label={ Text((if(model.mode=="sherpa") model.models.info(model.modelSize).name else "Android live")+" · "+(if(model.language=="de-DE") "Deutsch" else "English")+"  ›") })
+                    SuggestionChip(onClick={model.page="settings"},label={ Text(model.models.info(model.modelSize).name+" · "+(if(model.language=="de-DE") "Deutsch" else "English")+"  ›") })
                 } }
                 item { OutlinedTextField(model.query,{model.query=it},label={Text("Search thoughts")},modifier=Modifier.fillMaxWidth().testTag("search"),singleLine=true,shape=RoundedCornerShape(20.dp)) }
                 if(model.notes.isEmpty() && model.pending.isEmpty()) item { Surface(shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surfaceContainerLow,modifier=Modifier.fillMaxWidth().padding(top=24.dp)) {
@@ -138,16 +138,15 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { listOf("System","Light","Dark").forEach { label -> FilterChip(selected=model.theme==label,onClick={model.preference("theme",label)},label={Text(label)}) } }
                 HorizontalDivider()
                 Text("Your voice, your choice.",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
-                Text("Sherpa saves audio privately until transcription succeeds. Android live mode keeps recognized text only; unfinished speech cannot be retried.")
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.mode=="sherpa",{model.preference("mode","sherpa")},label={Text("Sherpa")}); FilterChip(model.mode=="android",{model.preference("mode","android")},label={Text("Android live")}) }
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},enabled=model.mode=="android" || model.models.supports(model.modelSize,"de-DE"),label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},label={Text("English")}) }
+                Text("Sherpa records audio privately on this device and keeps it until transcription succeeds.")
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { FilterChip(model.language=="de-DE",{model.preference("language","de-DE")},enabled=model.models.supports(model.modelSize,"de-DE"),label={Text("Deutsch")}); FilterChip(model.language=="en-US",{model.preference("language","en-US")},enabled=model.models.supports(model.modelSize,"en-US"),label={Text("English")}) }
                 Text("Speech models",style=MaterialTheme.typography.headlineSmall,fontFamily=FontFamily.Serif)
                 Text("Choose a model for your next recording. Every model below supports German. Your language stays selected. Downloads stay on this device.",color=MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Downloads can continue with the screen locked. Android power limits may interrupt them; resume saved progress here.",style=MaterialTheme.typography.bodySmall)
                 if(!notificationsGranted) Text("Allow notifications to see download progress and Cancel outside Nonara. If denied, track and cancel downloads here.",style=MaterialTheme.typography.bodySmall)
                 model.models.ids().forEach { size ->
                     val info=model.models.info(size)
-                    val selected=model.mode=="sherpa" && model.modelSize==size
+                    val selected=model.modelSize==size
                     val installed=size in model.installed
                     val transfer=model.modelTransfers[size]
                     Surface(shape=RoundedCornerShape(24.dp),color=if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -180,7 +179,6 @@ fun NotesScreen(model:AppModel=viewModel()) {
                         }
                     }
                 }
-                TextButton(onClick={model.androidDownload()}) { Text("Request Android language pack") }
                 HorizontalDivider()
                 Text("Privacy & data",style=MaterialTheme.typography.titleLarge)
                 Text("Notes stay on this device. Audio is never uploaded. Models need an initial download. Platform backup is disabled; export your notes before uninstalling or replacing your phone. Pending recordings are excluded from exports.")
@@ -200,7 +198,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
     if(model.active!=null) Dialog(onDismissRequest={},properties=DialogProperties(usePlatformDefaultWidth=false)) {
         Box(Modifier.fillMaxWidth().padding(16.dp),contentAlignment=Alignment.Center) {
             Box(Modifier.widthIn(max=520.dp)) {
-                RecordingPanel(model.paused,model.busyCapture,model.elapsedMillis,model.microphoneLevel,model.captureLabel,model.preview,
+                RecordingPanel(model.paused,model.busyCapture,model.elapsedMillis,model.microphoneLevel,model.captureLabel,
                     onPause={model.togglePause()},onFinish={model.finish()},onDiscard={confirmDiscard=model.active})
             }
         }

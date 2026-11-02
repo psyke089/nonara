@@ -21,7 +21,6 @@ class AppModel(application:Application):AndroidViewModel(application) {
     val captures=Captures(context)
     val models=Models(context)
     private val recorder=PcmRecorder(context,viewModelScope)
-    private val live=AndroidLive(context,viewModelScope)
     var notes by mutableStateOf(emptyList<Note>()); private set
     var deleted by mutableStateOf(emptyList<Note>()); private set
     var pending by mutableStateOf(emptyList<JSONObject>()); private set
@@ -31,13 +30,11 @@ class AppModel(application:Application):AndroidViewModel(application) {
     var status by mutableStateOf(""); private set
     var error by mutableStateOf<String?>(null)
     var theme by mutableStateOf("System"); private set
-    var mode by mutableStateOf("sherpa"); private set
-    var language by mutableStateOf("de-DE"); private set
-    var modelSize by mutableStateOf("base"); private set
+    var language by mutableStateOf(DictationDefaults.LANGUAGE); private set
+    var modelSize by mutableStateOf(DictationDefaults.MODEL); private set
     var active by mutableStateOf<String?>(null); private set
     var paused by mutableStateOf(false); private set
     var busyCapture by mutableStateOf(false); private set
-    var preview by mutableStateOf(""); private set
     var microphoneLevel by mutableStateOf(0f); private set
     var elapsedMillis by mutableStateOf(0L); private set
     var captureLabel by mutableStateOf(""); private set
@@ -56,9 +53,8 @@ class AppModel(application:Application):AndroidViewModel(application) {
     init {
         viewModelScope.launch { context.preferences.data.collect {
             theme=it[stringPreferencesKey("theme")] ?: "System"
-            mode=it[stringPreferencesKey("mode")] ?: "sherpa"
-            language=it[stringPreferencesKey("language")] ?: "de-DE"
-            modelSize=it[stringPreferencesKey("model")] ?: "base"
+            language=DictationDefaults.language(it[stringPreferencesKey("language")])
+            modelSize=DictationDefaults.model(it[stringPreferencesKey("model")])
         } }
         viewModelScope.launch {
             withContext(Dispatchers.IO) { store.purge(); captures.all().forEach { r ->
@@ -75,7 +71,6 @@ class AppModel(application:Application):AndroidViewModel(application) {
         val info=models.info(id)
         context.preferences.edit {
             it[stringPreferencesKey("model")]=id
-            it[stringPreferencesKey("mode")]="sherpa"
             it[stringPreferencesKey("language")]=info.languageForSelection(language)
         }
     }
@@ -117,32 +112,25 @@ class AppModel(application:Application):AndroidViewModel(application) {
     fun restore(note:Note)=task { withContext(Dispatchers.IO) { store.restore(note.id) }; refresh() }
     fun start(caret:Int?)=task {
         require(active==null) { "A capture is already open" }
-        if(mode=="sherpa") {
-            require(models.supports(modelSize,language)) { "This model does not support the selected language" }
-            require(models.ready(modelSize)) { "Download a speech model in Settings before recording" }
-        }
+        require(models.supports(modelSize,language)) { "This model does not support the selected language. Choose another model in Settings." }
+        require(models.ready(modelSize)) { "Download a speech model in Settings before recording" }
         flush(); require(status!="Couldn't save") { "Save the note before recording" }
         val note=editor?.takeIf { it.body.isNotBlank() || it.title!=null }
-        val r=withContext(Dispatchers.IO) { captures.create(note,caret,mode,language,modelSize) }
-        active=r.getString("id"); paused=false; preview=""; recordingClock.start(android.os.SystemClock.elapsedRealtime())
+        val r=withContext(Dispatchers.IO) { captures.create(note,caret,language,modelSize) }
+        active=r.getString("id"); paused=false; recordingClock.start(android.os.SystemClock.elapsedRealtime())
         begin(r)
     }
     private fun begin(r:JSONObject) {
         val id=r.getString("id")
         microphoneLevel=0f
-        captureLabel=(if(r.getString("mode")=="sherpa") models.info(r.getString("model")).name else "Android live") + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
+        captureLabel=models.info(r.getString("model")).name + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
         recordingClock.resume(android.os.SystemClock.elapsedRealtime())
         clockJob?.cancel()
         clockJob=viewModelScope.launch { while(isActive) { elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); delay(100) } }
         try {
-        if(r.getString("mode")=="sherpa") recorder.start(id, { microphoneLevel=it }) { message -> error=message; viewModelScope.launch { pause(true) } }
-        else live.start(r.getString("language"),{ preview=it },{ text ->
-            withContext(Dispatchers.IO) { synchronized(Stores.captureLock) {
-                val fresh=captures.read(id); fresh.put("text",(fresh.optString("text")+" "+text).trim()); captures.write(fresh)
-            } }; preview=captures.read(id).optString("text")
-        },{ message -> error=message; viewModelScope.launch { pause(true) } },{ microphoneLevel=it })
+        recorder.start(id, { microphoneLevel=it }) { message -> error=message; viewModelScope.launch { pause(true) } }
         } catch(e:Exception) {
-            recorder.release(); live.release()
+            recorder.release()
             recordingClock.pause(android.os.SystemClock.elapsedRealtime())
             clockJob?.cancel(); microphoneLevel=0f; paused=true
             captures.state(id,"interrupted",e.message ?: "Microphone unavailable")
@@ -152,17 +140,17 @@ class AppModel(application:Application):AndroidViewModel(application) {
     suspend fun pause(interrupted:Boolean=false) {
         if(busyCapture || active==null) return
         busyCapture=true
-        try { recorder.stop(); live.stop(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true; recordingClock.pause(android.os.SystemClock.elapsedRealtime()); clockJob?.cancel(); elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); microphoneLevel=0f }
+        try { recorder.stop(); active?.let { withContext(Dispatchers.IO) { captures.state(it,if(interrupted) "interrupted" else "paused") } }; paused=true; recordingClock.pause(android.os.SystemClock.elapsedRealtime()); clockJob?.cancel(); elapsedMillis=recordingClock.elapsed(android.os.SystemClock.elapsedRealtime()); microphoneLevel=0f }
         finally { busyCapture=false }
     }
     fun togglePause()=task { if(paused) { val r=captures.read(active!!); captures.state(active!!,"recording"); begin(r); paused=false } else pause() }
     fun finish()=task {
         val id=active ?: return@task; busyCapture=true
-        try { recorder.stop(); live.stop(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f; preview=""; refresh() }
+        try { recorder.stop(); withContext(Dispatchers.IO) { captures.enqueue(id) }; active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f; refresh() }
         finally { busyCapture=false }
     }
     fun discard(id:String)=task {
-        if(active==id) { recorder.stop(); live.stop(); active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f }
+        if(active==id) { recorder.stop(); active=null; paused=false; clockJob?.cancel(); microphoneLevel=0f }
         withContext(Dispatchers.IO) { captures.discard(id) }; refresh()
     }
     fun resume(id:String)=task {
@@ -192,7 +180,6 @@ class AppModel(application:Application):AndroidViewModel(application) {
         require(active==null && pending.none { it.optString("model")==size }) { "A capture still needs this model" }
         withContext(Dispatchers.IO) { downloads.delete(size) }; refresh()
     }
-    fun androidDownload()=task { live.download(language) }
     fun export(uri:Uri)=task {
         flush()
         withContext(Dispatchers.IO) {
@@ -218,5 +205,5 @@ class AppModel(application:Application):AndroidViewModel(application) {
         }; status=summary; refresh()
     }
     fun task(block:suspend ()->Unit) { viewModelScope.launch { try { block() } catch(e:CancellationException) { throw e } catch(e:Exception) { error=e.message ?: "Operation failed" } } }
-    override fun onCleared() { clockJob?.cancel(); recorder.release(); live.release(); super.onCleared() }
+    override fun onCleared() { clockJob?.cancel(); recorder.release(); super.onCleared() }
 }

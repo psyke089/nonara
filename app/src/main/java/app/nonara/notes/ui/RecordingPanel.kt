@@ -21,7 +21,7 @@ import app.nonara.notes.recordingTime
 
 @Composable
 fun RecordingPanel(paused:Boolean, busy:Boolean, elapsed:Long, level:Float, label:String,
-                   preview:String, onPause:()->Unit, onFinish:()->Unit, onDiscard:()->Unit) {
+                   onPause:()->Unit, onFinish:()->Unit, onDiscard:()->Unit) {
     val ink=MaterialTheme.colorScheme.primary
     val displayedLevel by animateFloatAsState(if(paused) 0f else level, label="Microphone level")
     Surface(shape=RoundedCornerShape(32.dp), color=MaterialTheme.colorScheme.surface) {
@@ -42,7 +42,7 @@ fun RecordingPanel(paused:Boolean, busy:Boolean, elapsed:Long, level:Float, labe
                 }
             }
             Text(if(paused) "Your microphone is paused." else "Microphone on · speak naturally",style=MaterialTheme.typography.titleMedium)
-            Text(if(preview.isBlank()) "Your audio stays on this device. Finish to turn your recording into a note." else preview,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Your audio stays on this device. Finish to turn your recording into a note.",style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick=onPause,enabled=!busy,modifier=Modifier.weight(1f).heightIn(min=52.dp)) { Text(if(paused) "Resume" else "Pause") }
                 Button(onClick=onFinish,enabled=!busy,modifier=Modifier.weight(1f).heightIn(min=52.dp)) { Text("Finish") }

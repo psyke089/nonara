@@ -27,22 +27,21 @@ class NoteFlowTest {
     }
     @Test fun selectingParakeetPreservesGerman() {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
-        val original=Triple(model.modelSize,model.mode,model.language)
+        val original=Pair(model.modelSize,model.language)
         try {
             compose.runOnIdle { model.preference("language","de-DE") }
             compose.waitUntil(5000) { model.language=="de-DE" }
             compose.onNodeWithText("Settings").performClick()
             compose.onNodeWithTag("model-parakeet-v3").performScrollTo().performClick()
-            compose.waitUntil(5000) { model.modelSize=="parakeet-v3" && model.language=="de-DE" && model.mode=="sherpa" }
+            compose.waitUntil(5000) { model.modelSize=="parakeet-v3" && model.language=="de-DE" }
             compose.onNodeWithTag("model-parakeet-v3").assertIsSelected()
             compose.onNodeWithText("Deutsch",substring=false).performScrollTo().assertIsEnabled().assertIsSelected()
         } finally {
             compose.runOnIdle {
                 model.preference("model",original.first)
-                model.preference("mode",original.second)
-                model.preference("language",original.third)
+                model.preference("language",original.second)
             }
-            compose.waitUntil(5000) { model.modelSize==original.first && model.mode==original.second && model.language==original.third }
+            compose.waitUntil(5000) { model.modelSize==original.first && model.language==original.second }
         }
     }
     @Test fun speechModelCanBeSelectedForTheNextRecording() {
@@ -63,24 +62,74 @@ class NoteFlowTest {
     }
     @Test fun everyNewChoiceIsReachableAndPreservesGerman() {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
-        val original=Triple(model.modelSize,model.mode,model.language)
+        val original=Pair(model.modelSize,model.language)
         try {
             compose.runOnIdle { model.preference("language","de-DE") }
             compose.waitUntil(5000) { model.language=="de-DE" }
             compose.onNodeWithText("Settings").performClick()
             for(id in listOf("canary-180m","omnilingual-300m","nemotron-3.5","whisper-turbo","whisper-large-v3")) {
                 compose.onNodeWithTag("model-$id").performScrollTo().performClick()
-                compose.waitUntil(5000) { model.modelSize==id && model.language=="de-DE" && model.mode=="sherpa" }
+                compose.waitUntil(5000) { model.modelSize==id && model.language=="de-DE" }
                 compose.onNodeWithTag("model-$id").assertIsSelected()
             }
             compose.onNodeWithText("Deutsch",substring=false).performScrollTo().assertIsSelected()
         } finally {
             compose.runOnIdle {
                 model.preference("model",original.first)
-                model.preference("mode",original.second)
-                model.preference("language",original.third)
+                model.preference("language",original.second)
             }
-            compose.waitUntil(5000) { model.modelSize==original.first && model.mode==original.second && model.language==original.third }
+            compose.waitUntil(5000) { model.modelSize==original.first && model.language==original.second }
+        }
+    }
+    @Test fun settingsExposeNoAndroidBackendControls() {
+        compose.onNodeWithText("Settings").performClick()
+        compose.onNodeWithText("Android live",substring=true).assertDoesNotExist()
+        compose.onNodeWithText("Request Android language pack",substring=false).assertDoesNotExist()
+        compose.onNodeWithText("Back",substring=false).performClick()
+    }
+    @Test fun recordingWithoutAnInstalledModelOpensSettings() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val original=Pair(model.modelSize,model.language)
+        val missing=model.models.ids().firstOrNull { !model.models.ready(it) }
+        org.junit.Assume.assumeTrue("Every model is installed; cannot exercise the missing-model gate",missing!=null)
+        val target=missing!!
+        try {
+            compose.runOnIdle { model.preference("model",target) }
+            compose.waitUntil(5000) { model.modelSize==target && target !in model.installed }
+            compose.onNodeWithText("Record a thought").performClick()
+            compose.waitUntil(5000) { model.page=="settings" && model.error!=null }
+            assertNull(model.active)
+            assertTrue(model.error.orEmpty().contains("Settings"))
+        } finally {
+            compose.runOnIdle {
+                model.error=null; model.page="home"
+                model.preference("model",original.first)
+                if(model.language!=original.second) model.preference("language",original.second)
+            }
+            compose.waitUntil(5000) { model.modelSize==original.first && model.page=="home" }
+        }
+    }
+    @Test fun languageAndModelSelectionSurviveRestart() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val original=Pair(model.modelSize,model.language)
+        try {
+            compose.runOnIdle {
+                model.preference("model","small")
+                model.preference("language","en-US")
+            }
+            compose.waitUntil(5000) { model.modelSize=="small" && model.language=="en-US" }
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10000) {
+                val restarted=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+                restarted.modelSize=="small" && restarted.language=="en-US"
+            }
+        } finally {
+            val current=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+            compose.runOnIdle {
+                current.preference("model",original.first)
+                current.preference("language",original.second)
+            }
+            compose.waitUntil(5000) { current.modelSize==original.first && current.language==original.second }
         }
     }
     @Test fun typedThoughtPersistsAndCanBeFoundAgain() {

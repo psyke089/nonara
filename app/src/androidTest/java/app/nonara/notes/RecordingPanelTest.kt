@@ -19,7 +19,7 @@ class RecordingPanelTest {
             NonaraTheme {
                 if(finished) Text("Recording finished") else RecordingPanel(
                     paused=paused,busy=false,elapsed=65000,level=0.5f,
-                    label="Whisper base · Deutsch",preview="",
+                    label="Whisper base · Deutsch",
                     onPause={paused=!paused},onFinish={finished=true},onDiscard={})
             }
         }

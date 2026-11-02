@@ -26,10 +26,10 @@ class Captures(private val context: Context) {
     fun read(id: String)=JSONObject(File(dir(id),"capture.json").readText())
     fun write(record: JSONObject) = synchronized(Stores.captureLock) { atomicWrite(File(dir(record.getString("id")),"capture.json"),record.toString().toByteArray()) }
     fun all(): List<JSONObject> = synchronized(Stores.captureLock) { root.listFiles().orEmpty().mapNotNull { runCatching { read(it.name) }.getOrNull() }.filter { it.optString("state") !in listOf("completed","discarded") } }
-    fun create(note: Note?, caret: Int?, mode: String, language: String, size: String): JSONObject {
+    fun create(note: Note?, caret: Int?, language: String, size: String): JSONObject {
         val id=newId()
         return JSONObject().put("id",id).put("target",note?.id ?: newId()).put("new",note==null)
-            .put("original",note?.body ?: "").put("caret",caret ?: -1).put("mode",mode)
+            .put("original",note?.body ?: "").put("caret",caret ?: -1).put("mode",DictationDefaults.CAPTURE_MODE)
             .put("language",language).put("model",size).put("state","recording").put("created",System.currentTimeMillis())
             .put("text","").also { write(it) }
     }
@@ -98,7 +98,7 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
         try {
             val r=captures.read(id)
             if(r.getString("state") in listOf("completed","discarded")) return@withLock Result.success()
-            if(r.getString("mode")=="android" || r.getString("state")=="committing") {
+            if(r.getString("state")=="committing") {
                 captures.commit(id,r.getString("text")); return@withLock Result.success()
             }
             val model=Models(applicationContext); val size=r.getString("model")

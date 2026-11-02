@@ -17,9 +17,16 @@ class CapturePersistenceTest {
         val context=object:ContextWrapper(base) { override fun getFilesDir()=dir }
         try { block(context) } finally { dir.deleteRecursively() }
     }
+    @Test fun newCapturesAreAlwaysSherpaRecords()=isolated { context ->
+        val record=Captures(context).create(null,null,"de-DE","base")
+        assertEquals("sherpa",record.getString("mode"))
+        assertEquals("de-DE",record.getString("language"))
+        assertEquals("base",record.getString("model"))
+        assertEquals("recording",record.getString("state"))
+    }
     @Test fun repeatedCaptureCommitDoesNotDuplicateNote()=isolated { context ->
         val captures=Captures(context)
-        val r=captures.create(null,null,"android","de-DE","base")
+        val r=captures.create(null,null,"de-DE","base")
         val id=r.getString("id")
         captures.commit(id,"Ein neuer Gedanke")
         captures.commit(id,"Ein neuer Gedanke")
@@ -29,14 +36,14 @@ class CapturePersistenceTest {
     @Test fun deletedTargetPreservesRecognizedTextForRecovery()=isolated { context ->
         val store=Stores.notes(context); val note=Note.create("Existing")
         store.save(note)
-        val captures=Captures(context); val r=captures.create(note,null,"android","en-US","base")
+        val captures=Captures(context); val r=captures.create(note,null,"en-US","base")
         store.trash(note.id)
         try { captures.commit(r.getString("id"),"Recovered text"); fail("Must not resurrect a deleted note") } catch(_:IllegalStateException) {}
         assertTrue(store.list().isEmpty())
         assertEquals("Recovered text",captures.read(r.getString("id")).getString("text"))
     }
     @Test fun discardedCaptureCannotBeResurrected()=isolated { context ->
-        val captures=Captures(context); val r=captures.create(null,null,"sherpa","de-DE","base")
+        val captures=Captures(context); val r=captures.create(null,null,"de-DE","base")
         val id=r.getString("id"); captures.state(id,"discarded")
         captures.state(id,"transcribing")
         captures.commit(id,"Must not appear")
