@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Cut a release: bump versionCode/versionName, update the About line, run the suite, build the
-# signed APK, commit, tag and push. Pushing the tag makes GitHub Actions publish the release.
+# signed APK, commit, tag and push to origin and, when configured, to the github remote.
+# Pushing the tag makes GitHub Actions publish the release.
 #
 #   tools/release.sh 0.4.0            # full release
 #   tools/release.sh 0.4.0 --dry-run  # edit + test + build only, leave changes in the tree
@@ -73,4 +74,10 @@ git commit -sm "release $version"
 git tag -a "v$version" -m "Nonara $version"
 git push origin main
 git push origin "v$version"
-echo "pushed v$version — GitHub Actions publishes the APK for that tag"
+if git remote get-url github >/dev/null 2>&1; then
+  git push github main
+  git push github "v$version"
+  echo "pushed v$version to origin and github — GitHub Actions publishes the APK for that tag"
+else
+  echo "pushed v$version to origin; no github remote, so GitHub Actions will not publish it" >&2
+fi

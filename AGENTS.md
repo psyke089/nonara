@@ -106,9 +106,11 @@ Release builds:
 
 ## Continuous integration
 
-The source of truth is Codeberg; a push mirror copies `main` and all tags to the public GitHub
-repository (`psyke089/nonara`), where GitHub Actions builds. Point local clones at it with
-`git remote add github git@github.com:psyke089/nonara.git`, but keep committing to `origin`.
+The source of truth is Codeberg (`origin`). The public GitHub repository (`psyke089/nonara`)
+is a second remote, `github`, pushed explicitly — there is no push mirror any more, so GitHub
+only moves when you push it. Point local clones at it with
+`git remote add github git@github.com:psyke089/nonara.git` and keep committing to `origin`;
+push `main` and each `v*` tag to both.
 
 - `.github/workflows/ci.yml`: a push to `main` runs `testDebugUnitTest` and `lintDebug`; a `v*`
   tag additionally builds the signed release APK, asserts the signer is `CN=Nonara`, writes
@@ -119,29 +121,22 @@ repository (`psyke089/nonara`), where GitHub Actions builds. Point local clones 
   weaken those checks: a per-runner debug key would silently break installs.
 - `tools/install-android-sdk.sh` installs the `android-37` platform and 36/37 build-tools the
   workflow needs.
-- The mirror is authenticated over HTTPS with a fine-grained GitHub token scoped to
-  `psyke089/nonara` with **Contents** and **Workflows** read-write. An SSH deploy key is not an
+- Pushes to `github` go over SSH as the owning user account. An SSH **deploy key** is not an
   option: GitHub rejects workflow-file updates from one (`refusing to allow an OAuth App to
-  create or update workflow … without workflow scope`). The token exists only in Codeberg's
-  mirror settings and in the local tea config — never paste it into chat, commits, scripts or
-  logs; set it through `Settings → Repository → Mirror Settings` or a command that reads it
-  with `read -rs`. Rotating it means delete + re-create the mirror (Forgejo 16.0.0-dev has no
-  `PATCH` route for `push_mirrors`), then push once to Codeberg to trigger the first sync.
-- It force-pushes (`git push --mirror`), so treat the GitHub copy as disposable: no commits,
-  tags or branches are created there by hand.
-- A `v*` tag only starts the release run when it reaches GitHub in its own push. If `main` and a
-  tag are mirrored in one atomic push, GitHub creates the branch run only; force the release
-  with `gh workflow run ci.yml --ref v<version>` — a dispatch on a tag ref still matches the
+  create or update workflow … without workflow scope`). An HTTPS push needs a fine-grained
+  token with **Contents** and **Workflows** read-write; the local `gh` login carries only
+  `repo`, `gist`, `read:org` and `write:discussion`, which is why the remote is SSH here.
+  Never paste a token into chat, commits, scripts or logs.
+- A `v*` tag only starts the release run when it reaches GitHub in its own push. Pushing `main`
+  and the tag together means GitHub creates the branch run only; force the release with
+  `gh workflow run ci.yml --ref v<version>` — a dispatch on a tag ref still matches the
   `ref_type == 'tag'` guards, so it publishes. `tools/release.sh` pushes `main` and the tag
-  separately, which is the normal path.
-- The mirror runs `sync_on_commit`, so a push to Codeberg usually triggers both the mirror and the
-  workflow; its periodic interval is a safety net only. It is not reliable: a sync can be skipped
-  with `last_error` empty and a stale `last_update`, leaving GitHub on the old ref. When that
-  happens, push the refs straight to the copy (`git push github main`, `git push github
-  v<version>`) or use *Mirror Settings → Synchronize Now* — Codeberg's Forgejo (16.0.0-dev) has
-  no `/sync` API route. The mirror force-pushes the same refs later, so the detour is harmless.
+  separately to `origin` and then to `github`, which is the normal path.
+- Nothing force-pushes GitHub, so a missed or interrupted push simply leaves it behind. Catch
+  up with `git push github main` and `git push github v<version>`; never force-push to paper
+  over divergence — `origin` owns the history.
 - Repository secrets: `NONARA_KEYSTORE_B64` (base64 of the keystore), `NONARA_STORE_PASSWORD`,
-  `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Mirror force-pushes never touch secrets.
+  `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Pushing refs never touches them.
 
 ## Device testing
 

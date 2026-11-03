@@ -57,9 +57,10 @@ publishing. `tools/upload-apk.sh` copies the newest release APK plus its SHA-256
 Drive remote and needs a one-time `rclone config` setup; credentials stay in
 `~/.config/rclone/rclone.conf`, never in the repo.
 
-Codeberg is the source of truth. A push mirror copies `main` and tags to the public GitHub
-repository, where GitHub Actions runs the tests on every push and publishes the APK as a GitHub
-release for every `v*` tag.
+Codeberg is the source of truth. The public GitHub repository is a second remote: push `main`
+and every `v*` tag to it (`git push github main`, `git push github v<version>`), where GitHub
+Actions runs the tests on every push and publishes the APK as a GitHub release for each tag.
+There is no automatic mirror; `tools/release.sh` pushes both remotes.
 
 ## Layout
 
