@@ -13,14 +13,11 @@ Compile and target SDK 37.
 
 ## Language and speech models
 
-- **German (`de-DE`) is the primary dictation language and the default.** English is optional
-  secondary support; do not infer an English default from the device or UI language.
-- Every selectable speech model must support German. Multilingual models are welcome;
-  do not add English-only models unless the user explicitly requests them.
-- Selecting a model must preserve the chosen dictation language. Reject or disable an
-  incompatible choice instead of silently changing the language.
-- Prioritize German recordings when validating transcription. Keep models as explicit,
-  separate downloads; never bundle them in the APK.
+German (`de-DE`) is the primary dictation language and the default; every selectable model must
+support German, and an incompatible model/language pair is rejected rather than silently
+switching language. Models stay explicit user downloads, never bundled in the APK. The full
+rules live in [SPEC.md](docs/SPEC.md) §7 (Dictation and speech recognition) and the
+[model catalogue](docs/MODEL_CATALOGUE.md).
 
 ## Ownership and generation
 
@@ -85,7 +82,7 @@ Release builds:
     `nonara.keyAlias`, `nonara.keyPassword`, or the env vars `NONARA_STORE_FILE`,
     `NONARA_STORE_PASSWORD`, `NONARA_KEY_ALIAS`, `NONARA_KEY_PASSWORD`. Locally they live in
     `~/.gradle/gradle.properties`; CI supplies the same values from repository secrets.
-  - The keystore is `~/.config/nonara/nonara-release.jks` (alias `nonara`, 4096-bit RSA,
+  - The keystore is `~/.android/keys/nonara/nonara-release.jks` (alias `nonara`, 4096-bit RSA,
     certificate `CN=Nonara`). **Never commit it**, its passwords or `*.jks`/`*.keystore` files.
     Back it up: losing it means existing installs can no longer be updated in place. To
     recreate it (new identity, every install must be removed first):
