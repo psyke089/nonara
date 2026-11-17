@@ -103,11 +103,11 @@ Release builds:
 
 ## Continuous integration
 
-The source of truth is Codeberg (`origin`). The public GitHub repository (`psyke089/nonara`)
-is a second remote, `github`, pushed explicitly — there is no push mirror any more, so GitHub
-only moves when you push it. Point local clones at it with
-`git remote add github git@github.com:psyke089/nonara.git` and keep committing to `origin`;
-push `main` and each `v*` tag to both.
+The source of truth is Codeberg (`origin`, private). The public GitHub repository
+(`psyke089/nonara`) is the `github` remote: a mirror plus the release host. There is no push
+mirror, so GitHub only moves when you push it. `./tools/sync` pushes `main` and the release tag at HEAD
+to both, in their own pushes. Commit only to `origin`; GitHub PRs are read-only, so apply patches
+locally and push through `origin`.
 
 - `.github/workflows/ci.yml`: a push to `main` runs `testDebugUnitTest` and `lintDebug`; a `v*`
   tag additionally builds the signed release APK, asserts the signer is `CN=Nonara`, writes
