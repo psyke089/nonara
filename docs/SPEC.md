@@ -30,7 +30,7 @@ Five principles govern the experience:
 ### Decision status
 
 - **Agreed:** Name NONARA; calm/Zen product direction; three principal screens (Home, Editor, Settings); recording as a focused overlay/state; text-first notes; Markdown body with YAML front matter; one file per note; plain-text editing; automatic saving; local-first approach; no folders, tags, account requirement, or cloud sync in v1.
-- **Agreed brand direction:** Black Gothic/quill monogram for Android launcher; handcrafted burgundy monogram/lettering inside the app; parchment and warm neutral colors; restrained ink motif.
+- **Agreed brand direction:** Black Gothic/quill monogram for Android launcher; theme-tinted lettering inside the app; cool paper and midnight surfaces; restrained ink motif.
 - **Implementation defaults:** UUIDv7 IDs, private app-specific file storage, in-memory search index, 400 ms edit debounce, 30-day trash, WorkManager for retryable Sherpa transcription, Jetpack Compose/Kotlin/DataStore. Timing and performance values are provisional tuning targets.
 - **Resolved platform/privacy choices:** API 33 minimum; German/English on-device recognition; Sherpa as the only dictation backend with recoverable recordings; network access for explicit model downloads; no audio/transcript uploads; platform backup disabled; completed recordings retained locally with their notes.
 - **Open decisions:** Exact typography/accessibility-tested colors, explicit-title editing UX, and performance tuning. Direct folder access remains outside v1.
@@ -48,20 +48,20 @@ Five principles govern the experience:
 | Surface | Intended treatment |
 |---|---|
 | Android launcher | User-supplied Gothic/quill monogram on parchment, installed from `tmp/NONARA_gothic_android_icons/res/`; preserve its supplied artwork |
-| In-app branding | User-created burgundy hand-drawn **N**, without the discarded circle or unwanted extra strokes above it; complementary lowercase `nonara` wordmark |
-| Primary background | Warm parchment/cream, with very subtle texture only where it does not impair legibility |
+| In-app branding | User-created hand-drawn **N**, without the discarded circle or unwanted extra strokes above it; complementary lowercase `nonara` wordmark |
+| Primary background | Ice white in light mode and midnight blue in dark mode |
 | Text | Charcoal/deep ink color; clear and modern body font |
-| Accent | Burgundy/dark ink-red, used sparingly for primary actions and brand moments |
+| Accent | Cobalt blue, used sparingly for primary actions and brand moments |
 | Decorative language | An occasional ink drop, brush texture, or understated flourish—not ornamental UI chrome |
 
 The supplied launcher package includes legacy densities, adaptive foreground/background layers and
 API 33 themed monochrome icons. Its production resources are versioned under `app/src/main/res`;
 previews and storefront images remain scratch assets. The former generated placeholder icon and
 its generator are retired. Do not regenerate or redraw the supplied launcher artwork. In-app
-burgundy artwork is a separate asset; use supplied artwork if available, otherwise a locally
+wordmark artwork is a separate asset; use supplied artwork if available, otherwise a locally
 generated placeholder without claiming it is the user’s original mark.
 
-The light palette pairs porcelain `#F8F6F2` and ink `#252124` with mulberry `#802C49` for brand and selection, eucalyptus `#38665D` for model metadata, and bronze `#795625` for dates. Dark mode uses charcoal surfaces and lighter rose, sage and amber accents.
+The light palette pairs ice white `#F5F7FC` and navy ink `#111B32` with cobalt `#314DE2` for primary actions and selection. Citron highlights language chips and iris marks dates. In dark mode the background shifts to midnight `#0D1320`, with ice blue, lime and lilac accents.
 
 The brand can be expressive while the interface stays quiet. Use the Gothic motif for the mark, **not** for body text. Avoid noisy paper patterns behind editable content, excessive splatters, faux-antique controls, and busy gradients. Support light, dark, and follow-system appearance; test text and control contrast before shipping.
 
@@ -760,7 +760,7 @@ Optionally include `trash/` with an explicit user choice; exclude audio recordin
 - Soft delete, Undo, Trash, restore, automatic retention purge.
 - Settings: theme, supported language choice, privacy explanations, data export/import.
 - Private local file storage; Markdown + YAML interoperability.
-- Android adaptive launcher branding and quiet parchment/burgundy in-app aesthetic.
+- Android adaptive launcher branding and minimal cobalt and midnight in-app palette.
 
 ### Deliberately out of scope
 
