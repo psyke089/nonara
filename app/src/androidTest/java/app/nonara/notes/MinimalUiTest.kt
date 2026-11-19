@@ -21,6 +21,18 @@ class MinimalUiTest {
         compose.onNodeWithText(model.models.info(model.modelSize).name,substring=true).assertDoesNotExist()
     }
 
+    @Test fun idleModelFitsACompactRowAtStandardFontSize() {
+        val model=ViewModelProvider(compose.activity)[AppModel::class.java]
+        val id=model.models.ids().first { model.modelTransfers[it]==null && (!model.streaming || model.models.info(it).streaming) }
+        compose.onNodeWithContentDescription("Settings").performClick()
+        val row=compose.onNodeWithTag("model-card-$id").performScrollTo()
+        val bounds=row.getUnclippedBoundsInRoot()
+        val height=(bounds.bottom-bounds.top).value
+        val scale=compose.activity.resources.configuration.fontScale
+        org.junit.Assert.assertTrue("Idle model height: ${height}dp",height<=96f*maxOf(scale,1f))
+        compose.onNodeWithTag("model-$id").assertHasClickAction()
+    }
+
     @Test fun streamingPreferenceSurvivesActivityRecreation() {
         val model=ViewModelProvider(compose.activity)[AppModel::class.java]
         val previous=model.streaming
@@ -47,8 +59,8 @@ class MinimalUiTest {
             compose.onNodeWithText("Your voice, your choice",substring=true).assertDoesNotExist()
             compose.onNodeWithTag("dictation-streaming").performScrollTo().performClick()
             compose.onNodeWithTag("model-kroko-de").performScrollTo().performClick()
-            compose.onNodeWithTag("model-kroko-de-language-de-DE").assertExists()
-            compose.onNodeWithTag("model-kroko-de-streaming").assertExists()
+            compose.onNodeWithTag("model-kroko-de-language-de-DE",useUnmergedTree=true).assertExists()
+            compose.onNodeWithTag("model-kroko-de-streaming",useUnmergedTree=true).assertExists()
             compose.onNodeWithTag("language-en-US").performScrollTo().assertIsNotEnabled()
             compose.onNodeWithTag("model-base").assertDoesNotExist()
         } finally {

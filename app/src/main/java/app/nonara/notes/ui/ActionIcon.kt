@@ -16,12 +16,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /** Locally drawn, consistent 24-unit outline icons; no downloaded icon assets. */
-enum class ActionGlyph { BACK, SETTINGS, MIC, WRITE, COPY, SHARE, DELETE, UNDO, RESTORE, DOWNLOAD, CANCEL, PLAY, PAUSE, CHECK, IMPORT, EXPORT, TRASH }
+enum class ActionGlyph { SEARCH, BACK, SETTINGS, MIC, WRITE, COPY, SHARE, DELETE, UNDO, RESTORE, DOWNLOAD, CANCEL, PLAY, PAUSE, CHECK, IMPORT, EXPORT, TRASH }
 
-private val glyphs=ActionGlyph.entries.associateWith { glyph ->
+internal val glyphs=ActionGlyph.entries.associateWith { glyph ->
     ImageVector.Builder(glyph.name,24.dp,24.dp,24f,24f).apply {
         path(fill=null,stroke=SolidColor(Color.Black),strokeLineWidth=1.8f,strokeLineCap=StrokeCap.Round,strokeLineJoin=StrokeJoin.Round,pathFillType=PathFillType.NonZero) {
             when(glyph) {
+                ActionGlyph.SEARCH -> {
+                    moveTo(17f,10.5f); arcTo(6.5f,6.5f,0f,true,true,4f,10.5f); arcTo(6.5f,6.5f,0f,true,true,17f,10.5f)
+                    moveTo(15.5f,15.5f); lineTo(21f,21f)
+                }
                 ActionGlyph.BACK -> { moveTo(19f,12f); lineTo(5f,12f); moveTo(11f,6f); lineTo(5f,12f); lineTo(11f,18f) }
                 ActionGlyph.SETTINGS -> {
                     moveTo(4f,6f); lineTo(20f,6f); moveTo(4f,12f); lineTo(20f,12f); moveTo(4f,18f); lineTo(20f,18f)

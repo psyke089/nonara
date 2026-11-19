@@ -19,6 +19,8 @@ class NoteFlowTest {
         try {
             compose.runOnIdle { model.query=note.body }
             compose.waitUntil(5000) { model.notes.any { it.id==note.id } }
+            compose.onNodeWithTag("note-${note.id}").assertIsDisplayed()
+            compose.onNodeWithText("Today").assertDoesNotExist()
             compose.onAllNodesWithText(note.body,useUnmergedTree=true).filter(!hasSetTextAction()).assertCountEquals(1)
             compose.onNodeWithTag("note-${note.id}").performClick()
             val editorStatus=compose.onNodeWithTag("app-status").assertTextEquals("Saved").fetchSemanticsNode().boundsInRoot

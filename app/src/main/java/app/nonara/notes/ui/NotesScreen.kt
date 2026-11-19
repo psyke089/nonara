@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -77,7 +79,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
     }
     Scaffold(
         topBar={ Column { TopAppBar(
-            title={ if(model.page=="home") Image(painterResource(R.drawable.nonara_wordmark),"Nonara",modifier=Modifier.width(124.dp).height(60.dp),colorFilter=ColorFilter.tint(MaterialTheme.colorScheme.primary))
+            title={ if(model.page=="home") Image(painterResource(R.drawable.nonara_wordmark),"Nonara",modifier=Modifier.width(132.dp).height(60.dp),colorFilter=ColorFilter.tint(MaterialTheme.colorScheme.primary))
                 else Text(model.page.replaceFirstChar { it.uppercase() },fontFamily=FontFamily.Serif,style=MaterialTheme.typography.headlineMedium) },
             navigationIcon={ if(model.page!="home") IconAction("Back",ActionGlyph.BACK,::back) },
             actions={ if(model.page=="home") IconAction("Settings",ActionGlyph.SETTINGS,{model.page="settings"}) }
@@ -88,14 +90,37 @@ fun NotesScreen(model:AppModel=viewModel()) {
                     maxLines=1,overflow=TextOverflow.Ellipsis)
             }
         } },
-        bottomBar={ if(model.page=="home" || model.page=="editor") Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=12.dp),horizontalArrangement=Arrangement.spacedBy(16.dp,Alignment.End)) {
-            if(model.page=="home") IconAction("Write",ActionGlyph.WRITE,{model.open()},prominent=true)
-            IconAction("Record",ActionGlyph.MIC,::record,prominent=true)
-        } }
+        bottomBar={
+            if (model.page=="home" || model.page=="editor") {
+                Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=8.dp),
+                    contentAlignment=Alignment.CenterEnd) {
+                    Surface(shape=RoundedCornerShape(32.dp),color=MaterialTheme.colorScheme.surfaceContainer,
+                        border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                        Row(Modifier.padding(4.dp),verticalAlignment=Alignment.CenterVertically) {
+                            if (model.page=="home") IconAction("Write",ActionGlyph.WRITE,{model.open()})
+                            IconAction("Record",ActionGlyph.MIC,::record,prominent=true)
+                        }
+                    }
+                }
+            }
+        }
     ) { padding ->
         when(model.page) {
             "home" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-                item { OutlinedTextField(model.query,{model.query=it},label={Text("Search")},modifier=Modifier.fillMaxWidth().padding(top=12.dp).testTag("search"),singleLine=true,shape=RoundedCornerShape(20.dp)) }
+                item {
+                    OutlinedTextField(
+                        value=model.query, onValueChange={model.query=it}, singleLine=true,
+                        placeholder={Text("Search")}, leadingIcon={Icon(glyphs.getValue(ActionGlyph.SEARCH),null)},
+                        shape=RoundedCornerShape(16.dp),
+                        colors=OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor=Color.Transparent,
+                            unfocusedContainerColor=MaterialTheme.colorScheme.surfaceContainer,
+                            focusedContainerColor=MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        modifier=Modifier.fillMaxWidth().padding(top=12.dp).testTag("search")
+                            .semantics { contentDescription="Search" }
+                    )
+                }
                 if(model.notes.isEmpty() && model.pending.isEmpty()) item { Text("No notes yet",color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(vertical=24.dp)) }
                 items(model.pending,key={it.getString("id")}) { capture ->
                     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(14.dp)) {
@@ -112,24 +137,39 @@ fun NotesScreen(model:AppModel=viewModel()) {
                     } }
                 }
                 val filtered=model.notes.filter { model.query.isBlank() || it.title.orEmpty().contains(model.query,ignoreCase=true) || it.body.contains(model.query,ignoreCase=true) }
-                val groups=filtered.groupBy { val date=it.updatedAt.atZone(ZoneId.systemDefault()).toLocalDate(); when(date) { LocalDate.now()->"Today"; LocalDate.now().minusDays(1)->"Yesterday"; else->"Earlier" } }
-                groups.forEach { (group,notes) ->
-                    item { Text(group,style=MaterialTheme.typography.labelLarge,modifier=Modifier.padding(top=12.dp)) }
-                    items(notes,key={it.id}) { note -> Card(onClick={model.open(note)},shape=RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow),modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
-                        Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            note.title?.takeIf { it.isNotBlank() }?.let { Text(it,style=MaterialTheme.typography.titleMedium,maxLines=2) }
-                            Text(note.body,maxLines=3,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),style=MaterialTheme.typography.labelSmall)
+                items(filtered,key={it.id}) { note ->
+                    Surface(onClick={model.open(note)},color=MaterialTheme.colorScheme.background,
+                        modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
+                        Column {
+                            Column(Modifier.padding(horizontal=4.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),
+                                    style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary)
+                                note.title?.takeIf { it.isNotBlank() }?.let {
+                                    Text(it,style=MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                }
+                                Text(note.body,style=MaterialTheme.typography.bodyLarge,maxLines=3,overflow=TextOverflow.Ellipsis)
+                            }
+                            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
                         }
-                    } }
+                    }
                 }
                 if(model.canUndo) item { IconAction("Undo last deletion",ActionGlyph.UNDO,{model.undoDelete()}) }
             }
             "editor" -> Column(Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
-                TextField(model.editor?.title.orEmpty(),{model.edit(text.text,it)},placeholder={Text("Title")},textStyle=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif),
-                    colors=TextFieldDefaults.colors(focusedContainerColor=MaterialTheme.colorScheme.background,unfocusedContainerColor=MaterialTheme.colorScheme.background),modifier=Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(text,{text=it;model.edit(it.text)},placeholder={Text("Note")},shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=280.dp))
+                val fieldColors=TextFieldDefaults.colors(
+                    focusedContainerColor=Color.Transparent,unfocusedContainerColor=Color.Transparent,
+                    focusedIndicatorColor=Color.Transparent,unfocusedIndicatorColor=Color.Transparent
+                )
+                Surface(shape=RoundedCornerShape(18.dp),color=MaterialTheme.colorScheme.surfaceContainerLow,
+                    border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
+                    Column {
+                        TextField(model.editor?.title.orEmpty(),{model.edit(text.text,it)},placeholder={Text("Title")},
+                            textStyle=MaterialTheme.typography.headlineMedium,colors=fieldColors,modifier=Modifier.fillMaxWidth())
+                        HorizontalDivider(Modifier.padding(horizontal=16.dp),color=MaterialTheme.colorScheme.outlineVariant)
+                        TextField(text,{text=it;model.edit(it.text)},placeholder={Text("Note")},colors=fieldColors,
+                            modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=240.dp))
+                    }
+                }
                 if(model.editorConflict) {
                     Text("This note changed while editing. Save your draft as a copy to keep both versions.",style=MaterialTheme.typography.bodySmall)
                     IconAction("Save as copy",ActionGlyph.CHECK,{model.saveConflictCopy()})
@@ -169,38 +209,11 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 }
                 Text("Speech models",style=MaterialTheme.typography.titleMedium)
                 if(model.streaming && !model.models.info(model.modelSize).streaming) Text("Select a streaming model.",style=MaterialTheme.typography.bodySmall)
-                model.models.ids().filter { !model.streaming || model.models.info(it).streaming }.forEach { id ->
-                    val info=model.models.info(id)
-                    val selected=model.modelSize==id
-                    val installed=id in model.installed
-                    val transfer=model.modelTransfers[id]
-                    val compatible=info.supports(model.language)
-                    Surface(shape=RoundedCornerShape(20.dp),color=if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Row(verticalAlignment=Alignment.CenterVertically) {
-                                RadioButton(selected,{model.selectModel(id)},enabled=compatible,modifier=Modifier.testTag("model-$id").semantics { contentDescription="Select ${info.name}" })
-                                Text(info.name,style=MaterialTheme.typography.titleMedium,modifier=Modifier.weight(1f))
-                            }
-                            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                                info.languages.forEach { language -> ModelBadge(if(language=="de-DE") "DE" else "EN","model-$id-language-$language") }
-                                if(info.streaming) ModelBadge("Streaming","model-$id-streaming")
-                            }
-                            Text("${model.models.bytes(id)/1024/1024} MiB · ${if(installed) "Installed" else "Not installed"}",style=MaterialTheme.typography.labelMedium)
-                            if(!compatible) Text("Unavailable for the selected language",style=MaterialTheme.typography.bodySmall)
-                            if(model.downloadingModel==id) {
-                                if(transfer?.phase==TransferPhase.VERIFYING) LinearProgressIndicator(Modifier.fillMaxWidth())
-                                else LinearProgressIndicator(progress={transfer?.let { it.bytes.toFloat()/it.total.coerceAtLeast(1) } ?: 0f},modifier=Modifier.fillMaxWidth())
-                                Text(model.downloadStatus,style=MaterialTheme.typography.bodySmall)
-                                IconAction("Cancel download",ActionGlyph.CANCEL,{model.cancelDownload()})
-                            } else if(!installed) {
-                                transfer?.let { Text(TransferProgress(it.phase,it.bytes,it.total).label(),style=MaterialTheme.typography.bodySmall); if(it.message.isNotBlank()) Text(it.message,style=MaterialTheme.typography.bodySmall) }
-                                FlowRow {
-                                    val label=when(transfer?.phase) { TransferPhase.INTERRUPTED -> "Resume download"; TransferPhase.FAILED -> "Retry download"; else -> "Download" }
-                                    IconAction(label,ActionGlyph.DOWNLOAD,{if(transfer==null) confirmDownload=id else download(id)},enabled=!model.downloading)
-                                    if(transfer!=null) IconAction("Discard partial download",ActionGlyph.DELETE,{confirmDiscardDownload=id},enabled=!model.downloading)
-                                }
-                            } else IconAction("Remove download",ActionGlyph.DELETE,{model.deleteModel(id)},enabled=!model.downloading)
-                        }
+                Column(verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    model.models.ids().filter { !model.streaming || model.models.info(it).streaming }.forEach { id ->
+                        SpeechModelCard(model,id,
+                            onDownload={ if(model.modelTransfers[id]==null) confirmDownload=id else download(id) },
+                            onDiscard={confirmDiscardDownload=id})
                     }
                 }
                 HorizontalDivider()
@@ -238,12 +251,5 @@ fun NotesScreen(model:AppModel=viewModel()) {
         AlertDialog(onDismissRequest={model.error=null},title={Text("Unable to continue")},text={Text(message)},
             confirmButton={ if(model.editorConflict) IconAction("Save as copy",ActionGlyph.CHECK,{model.saveConflictCopy()}) else IconAction("OK",ActionGlyph.CHECK,{model.error=null}) },
             dismissButton={ if(model.editorConflict) IconAction("Keep editing",ActionGlyph.CANCEL,{model.error=null}) })
-    }
-}
-
-@Composable
-private fun ModelBadge(label:String,tag:String) {
-    Surface(shape=RoundedCornerShape(50),color=MaterialTheme.colorScheme.surfaceContainer,modifier=Modifier.testTag(tag)) {
-        Text(label,style=MaterialTheme.typography.labelSmall,modifier=Modifier.padding(horizontal=9.dp,vertical=4.dp))
     }
 }

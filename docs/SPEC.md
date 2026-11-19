@@ -61,7 +61,7 @@ its generator are retired. Do not regenerate or redraw the supplied launcher art
 burgundy artwork is a separate asset; use supplied artwork if available, otherwise a locally
 generated placeholder without claiming it is the user’s original mark.
 
-**Suggested exploration colors (not yet final accessibility-approved tokens):** parchment `#F5F0E7`, paper `#FFFCF7`, burgundy `#76283A`, charcoal `#302824`, muted secondary `#82766E`.
+The light palette pairs porcelain `#F8F6F2` and ink `#252124` with mulberry `#802C49` for brand and selection, eucalyptus `#38665D` for model metadata, and bronze `#795625` for dates. Dark mode uses charcoal surfaces and lighter rose, sage and amber accents.
 
 The brand can be expressive while the interface stays quiet. Use the Gothic motif for the mark, **not** for body text. Avoid noisy paper patterns behind editable content, excessive splatters, faux-antique controls, and busy gradients. Support light, dark, and follow-system appearance; test text and control contrast before shipping.
 
@@ -103,7 +103,7 @@ Recording overlay/state
 - Supplied NONARA vector wordmark at top left, tinted for the active theme, and an icon Settings action.
 - Search field for note content and titles.
 - Simple list of note cards with an optional explicit title, a brief text preview, and human-readable date.
-- Group notes quietly into **Today**, **Yesterday**, and **Earlier** (calendar groups follow device-local date).
+- Use one chronological list with a local date and time per note.
 - Sort by `updated_at` descending, stable tie-break by `id`.
 - Primary microphone button, secondary pencil/new-text action.
 - Minimal empty state: **“No notes yet”**. No decorative headings, taglines or model switcher on Home.
@@ -149,7 +149,7 @@ Keep settings short and grouped:
 3. **Privacy & data:** Export, Import, Trash/recovery, delete data and explanations of local transcription, retained recordings and disabled platform backup.
 4. **About:** Version, licenses, feedback.
 
-Action buttons use locally drawn icons, accessible names, tooltips and at least 48 dp touch targets. Selection chips retain concise labels. Model cards show DE/EN language chips and a Streaming chip where supported. Keep factual status/errors, sizes and licenses; remove promotional/decorative copy.
+Action buttons use locally drawn icons, accessible names, tooltips and at least 48 dp touch targets. Selection chips retain concise labels. Compact model rows place selection, name, language chips, size and download action together. Streaming models carry a Streaming chip. Progress and recovery controls expand below the row as needed. Keep factual status/errors, sizes and licenses; remove promotional/decorative copy.
 
 Defaults: theme follows system; Recording with Sherpa/base; German by default, with English only when explicitly
 selected; audio retained locally with successfully transcribed notes; trash retention
@@ -667,7 +667,7 @@ A single Android app module is sufficient initially. `NoteCodec` should remain i
 - Initial implementation: scan `notes/*.md` on startup, parse, index the note bodies and titles **in memory**, and emit list updates through `Flow`.
 - Sort by `updated_at` descending, then `id` for deterministic ties.
 - Search explicit title and body, case-insensitively; optimize only after measuring typical datasets.
-- Previews, grouping by local calendar day, and search matches are **computed**, not stored in Markdown metadata.
+- Previews, displayed dates, and search matches are **computed**, not stored in Markdown metadata.
 - Pending new-note cards are projected from `pending/`; pending appends decorate their target note instead of duplicating it. Retry actions use the retained Sherpa audio.
 - A malformed note should not crash the whole collection scan; quarantine it logically in the UI while preserving its file bytes.
 - Rebuildability is a strict requirement: clearing the index must leave all user content intact.
