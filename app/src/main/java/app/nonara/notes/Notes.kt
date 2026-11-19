@@ -20,7 +20,6 @@ fun newId(): String {
 private val timestamp = DateTimeFormatterBuilder().appendInstant(3).toFormatter()
 data class Note(val id: String, val title: String?, val body: String, val createdAt: Instant,
     val updatedAt: Instant, val createdVia: String, val extra: Map<String, Any?> = emptyMap()) {
-    val displayTitle: String get() = title ?: body.lineSequence().firstOrNull { it.isNotBlank() }?.trim()?.removePrefix("# ") ?: "Untitled thought"
     companion object {
         fun create(body: String = "", source: String = "text", id: String = newId()): Note {
             val now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
@@ -83,13 +82,19 @@ class NoteStore(private val root: File) {
     private val notes = File(root, "notes").apply { mkdirs() }
     private val trashDir = File(root, "trash").apply { mkdirs() }
     private val recovery = File(root, "recovery").apply { mkdirs() }
+    private val recordingRoot = File(root, "recordings")
     private val revisions = mutableMapOf<String, Long>()
     init {
         recovery.listFiles()?.filter { it.extension == "md" }?.forEach { f ->
             runCatching { val n = read(f); atomicWrite(path(notes,n.id), f.readBytes()); f.delete() }.onFailure { problems += f.name }
         }
     }
-    private fun path(dir: File, id: String): File { require(UUID.fromString(id).toString() == id); return File(dir,"$id.md") }
+    private fun checkedId(id: String): String = id.also { require(UUID.fromString(it).toString() == it) }
+    private fun path(dir: File, id: String): File = File(dir,"${checkedId(id)}.md")
+    private fun recordingDir(id: String): File = File(recordingRoot,checkedId(id))
+    @Synchronized fun recordings(id: String): List<NoteRecording> = recordingDir(id).listFiles().orEmpty()
+        .filter { it.isFile && it.extension == "wav" && runCatching { checkedId(it.nameWithoutExtension) }.isSuccess }
+        .map { NoteRecording(it) }.sortedByDescending { it.recordedAtMillis }
     private fun read(f: File): Note {
         require(f.length() <= 4 * 1024 * 1024) { "Note exceeds 4 MiB" }
         val text = Charsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(f.readBytes())).toString()
@@ -134,8 +139,29 @@ class NoteStore(private val root: File) {
     @Synchronized fun purge() {
         trashDir.listFiles()?.filter { it.extension == "deleted" }?.forEach {
             val time = runCatching { Instant.parse(it.readText()) }.getOrNull()
-            if(time != null && time < Instant.now().minusSeconds(30L*86400)) { path(trashDir,it.nameWithoutExtension).delete(); it.delete() }
+            if(time != null && time < Instant.now().minusSeconds(30L*86400)) {
+                val note=path(trashDir,it.nameWithoutExtension)
+                if (!path(notes,it.nameWithoutExtension).exists() && (!note.exists() || note.delete()) &&
+                    recordingDir(it.nameWithoutExtension).deleteRecursively()) it.delete()
+            }
         }
+    }
+    @Synchronized fun commitRecording(target: String, capture: String, text: String, original: String?,
+        caret: Int?, create: Boolean, chunks: List<File>) {
+        val audio = chunks.filter { it.length() >= 2 }
+        if (audio.isEmpty()) {
+            appendCapture(target,capture,text,original,caret,create)
+            return
+        }
+        val folder = recordingDir(target).apply { mkdirs() }
+        val wav = File(folder,"${checkedId(capture)}.wav")
+        val staged = File(folder,"${wav.name}.writing")
+        try {
+            val needsArchive = !wav.exists()
+            if (needsArchive) writeRecordingWav(staged,audio)
+            appendCapture(target,capture,text,original,caret,create)
+            if (needsArchive) Files.move(staged.toPath(),wav.toPath(),StandardCopyOption.ATOMIC_MOVE)
+        } finally { staged.delete() }
     }
     @Synchronized fun appendCapture(target: String, capture: String, text: String, original: String?, caret: Int?, create: Boolean = false): Note {
         val draft=path(recovery,target)

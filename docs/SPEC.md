@@ -32,7 +32,7 @@ Five principles govern the experience:
 - **Agreed:** Name NONARA; calm/Zen product direction; three principal screens (Home, Editor, Settings); recording as a focused overlay/state; text-first notes; Markdown body with YAML front matter; one file per note; plain-text editing; automatic saving; local-first approach; no folders, tags, account requirement, or cloud sync in v1.
 - **Agreed brand direction:** Black Gothic/quill monogram for Android launcher; handcrafted burgundy monogram/lettering inside the app; parchment and warm neutral colors; restrained ink motif.
 - **Implementation defaults:** UUIDv7 IDs, private app-specific file storage, in-memory search index, 400 ms edit debounce, 30-day trash, WorkManager for retryable Sherpa transcription, Jetpack Compose/Kotlin/DataStore. Timing and performance values are provisional tuning targets.
-- **Resolved platform/privacy choices:** API 33 minimum; German/English on-device recognition; Sherpa as the only dictation backend with recoverable recordings; network access for explicit model downloads; no audio/transcript uploads; platform backup disabled; successful-capture audio deleted after durable commit.
+- **Resolved platform/privacy choices:** API 33 minimum; German/English on-device recognition; Sherpa as the only dictation backend with recoverable recordings; network access for explicit model downloads; no audio/transcript uploads; platform backup disabled; completed recordings retained locally with their notes.
 - **Open decisions:** Exact typography/accessibility-tested colors, explicit-title editing UX, and performance tuning. Direct folder access remains outside v1.
 
 ---
@@ -102,14 +102,14 @@ Recording overlay/state
 
 - Supplied NONARA vector wordmark at top left, tinted for the active theme, and an icon Settings action.
 - Search field for note content and titles.
-- Simple list of note cards/rows, with derived or explicit title, a brief text preview, and human-readable date.
+- Simple list of note cards with an optional explicit title, a brief text preview, and human-readable date.
 - Group notes quietly into **Today**, **Yesterday**, and **Earlier** (calendar groups follow device-local date).
 - Sort by `updated_at` descending, stable tie-break by `id`.
 - Primary microphone button, secondary pencil/new-text action.
 - Minimal empty state: **“No notes yet”**. No decorative headings, taglines or model switcher on Home.
 - Pending dictated thoughts appear with statuses such as **“Transcribing…”** or **“Couldn't transcribe — Retry”**. Failed Sherpa recordings retain their audio for retry. A pending append appears on its target note rather than as a duplicate note.
 
-Search is initially case-insensitive, over explicit title, derived title, and full body. No mandatory filters, tags, folders, or AI classification. For modest note collections, indexing content in memory is sufficient.
+Search is initially case-insensitive, over explicit title and full body. No mandatory filters, tags, folders, or AI classification. For modest note collections, indexing content in memory is sufficient.
 
 ### 3.2 Editor — read and edit
 
@@ -119,9 +119,10 @@ Search is initially case-insensitive, over explicit title, derived title, and fu
 - Note text is readable immediately; **do not** automatically summon the keyboard when opening an existing note.
 - Tap the text to edit. Use a minimal plain-text editor with intuitive selection, copy/paste, and multiline entry.
 - Markdown syntax is **stored as plain text**. Rendering or toolbars for Markdown formatting are not required in v1.
-- `title` is optional. When `null`, Home derives a title from the first meaningful body line.
-- Display a very discreet status: **Saving…**, **Saved**, or **Couldn't save**. Only show **Saved** after durable persistence.
+- `title` is optional. Cards omit the title when it is blank.
+- Reserve a shared status line below the top app bar on every screen. Only show **Saved** after durable persistence.
 - Microphone action allows dictating additional text to the current note.
+- Below the note, list successfully transcribed recordings with their date, duration and local playback controls. Playback stops when leaving the editor, starting a capture or sending the app to the background.
 - More menu: Copy, Share, Delete. Delete supports immediate Undo and later restoration from Trash.
 - Preserve cursor/selection and editor draft through ordinary lifecycle changes where possible.
 
@@ -145,14 +146,14 @@ Keep settings short and grouped:
 
 1. **Appearance:** System / Light / Dark.
 2. **Dictation:** Recording or Streaming, Deutsch or English, Sherpa model selection and installed model management. Streaming requires a streaming-capable model. Language choices remain explicit; models with automatic detection retain that native limitation.
-3. **Privacy & data:** Export, Import, Trash/recovery, delete data and explanations of local transcription, temporary audio and disabled platform backup.
+3. **Privacy & data:** Export, Import, Trash/recovery, delete data and explanations of local transcription, retained recordings and disabled platform backup.
 4. **About:** Version, licenses, feedback.
 
 Action buttons use locally drawn icons, accessible names, tooltips and at least 48 dp touch targets. Selection chips retain concise labels. Model cards show DE/EN language chips and a Streaming chip where supported. Keep factual status/errors, sizes and licenses; remove promotional/decorative copy.
 
 Defaults: theme follows system; Recording with Sherpa/base; German by default, with English only when explicitly
-selected; temporary audio removed after a successfully persisted transcript; trash retention
-30 days; no cloud sync, analytics or accounts. Do not advertise a keep-audio option in v1.
+selected; audio retained locally with successfully transcribed notes; trash retention
+30 days; no cloud sync, analytics or accounts.
 
 ---
 
@@ -196,11 +197,11 @@ The reserved optional scalar `last_applied_capture_id` is a durable idempotency 
 live recording status. Preserve it through edits/exports; see section 7.5 for its commit protocol.
 Do not trust imported receipts as authority over this installation’s pending jobs.
 
-**Not stored:** Derived title, preview, word count, search tokens, recording state, transcription progress, UI scroll position, or any cached index. These belong in derived or operational state.
+**Not stored:** Preview, word count, search tokens, recording state, transcription progress, UI scroll position, or any cached index. These belong in derived or operational state.
 
-### 4.2 Derived title
+### 4.2 Optional title
 
-When `title: null`, derive from the first non-empty body line after trimming that line for display. Optionally strip a leading Markdown heading marker for the *display title only*. If the body is empty (e.g., a legacy/imported file), display **“Untitled thought”**. Truncate visually, not in the persisted body.
+Show only the body preview and date when `title` is absent or blank. Truncate visually, not in the persisted body.
 
 ### 4.3 File naming and stability
 
@@ -263,12 +264,15 @@ filesDir/                     # App-private persistent root
 │       └── transcript.json    # Durable segment results / commit recovery
 ├── trash/
 │   └── <note-id>.md
+├── recordings/
+│   └── <note-id>/<capture-id>.wav
 ├── recovery/                  # Recoverable editor drafts / operation journal
 └── models/                    # Verified Sherpa/VAD files, excluded from exports
 ```
 
 - **`notes/`:** Completed human-readable Markdown notes; permanent source of truth.
 - **`pending/`:** Durable capture metadata, recognized segments and audio while pending, processing, failed or awaiting commit.
+- **`recordings/`:** Playable WAV files tied to note IDs. Trash and restore preserve them by ID, and permanent purge removes them.
 - **`trash/`:** Soft-deleted `.md` files, restorable by ID; track deletion time in a small operational record or sidecar so cleanup is deterministic without modifying the note's original metadata.
 - **`recovery/`:** Optional compact journal for user edits that have not yet been committed to their canonical note file. Must be recoverable and bounded.
 
@@ -285,7 +289,8 @@ note-format migration.
 | Deleted notes during retention | `trash/*.md` | **Yes, until purged** |
 | Capture records, recognized text and audio | `pending/` | **Yes, while incomplete** |
 | Editor draft before commit | Recovery journal | **Temporary durable recovery** |
-| Search tokens, list preview, derived title | In-memory index | No; rebuildable |
+| Completed recording audio | `recordings/` | **Yes, until its note is purged** |
+| Search tokens, list preview | In-memory index | No; rebuildable |
 | Theme / dictation preferences | Jetpack DataStore | Yes, for preferences |
 
 The in-memory index is always rebuildable from `notes/`; deleting it must never delete notes. Consider SQLite/FTS later only after measurement shows a need.
@@ -450,8 +455,9 @@ endless retries. Reuse durable segment results after partial failure. No cloud f
    receipt means already applied, so complete the record without inserting again. Do not infer
    success merely from matching text. Before a receipt is resolved, preserve it through edits,
    undo and deletion; serialize these operations behind commit recovery.
-5. Delete audio only after completion is durable. Failed deletion retries cleanup without
-   re-transcribing/re-inserting. Keep completed/discarded tombstones until workers are cancelled
+5. Prepare a local WAV from the PCM chunks before inserting the transcript, then attach it to
+   the note after the text commit. Retain pending audio through a failed commit and reuse the
+   commit intent for retry. Delete pending chunks after completion is durable. Keep completed/discarded tombstones until workers are cancelled
    and stale work cannot reapply. An imported receipt cannot complete an unrelated local job.
 
 Persist one undo operation per completed capture, with before/after revision checks; undo
@@ -660,8 +666,8 @@ A single Android app module is sufficient initially. `NoteCodec` should remain i
 
 - Initial implementation: scan `notes/*.md` on startup, parse, index the note bodies and titles **in memory**, and emit list updates through `Flow`.
 - Sort by `updated_at` descending, then `id` for deterministic ties.
-- Search explicit/derived title and body, case-insensitively; optimize only after measuring typical datasets.
-- Previews, grouping by local calendar day, search matches, and derived titles are **computed**, not stored in Markdown metadata.
+- Search explicit title and body, case-insensitively; optimize only after measuring typical datasets.
+- Previews, grouping by local calendar day, and search matches are **computed**, not stored in Markdown metadata.
 - Pending new-note cards are projected from `pending/`; pending appends decorate their target note instead of duplicating it. Retry actions use the retained Sherpa audio.
 - A malformed note should not crash the whole collection scan; quarantine it logically in the UI while preserving its file bytes.
 - Rebuildability is a strict requirement: clearing the index must leave all user content intact.
@@ -692,17 +698,17 @@ undecided settings.
   to explicit model provisioning. Models remain local; never upload audio, text or notes.
 - Sherpa recognition runs on device. Initial setup can need connectivity; installed models must
   be tested offline.
-- Keep raw Sherpa audio private and delete after durable note commit. Retain failed/interrupted
+- Keep Sherpa audio private and retain completed audio as note recordings. Retain failed/interrupted
   recordings until explicit Retry/Discard or completion. Show pending storage usage; no silent
   age-based purge of failed captures in v1.
 - Platform cloud backup and automatic device transfer are disabled by default. Keep
   `android:allowBackup="false"` and configure supported backup/data-extraction rules to exclude
-  notes, drafts, pending captures, models and preferences. Verify actual device behavior; do not
+  notes, drafts, recordings, pending captures, models and preferences. Verify actual device behavior; do not
   claim this defeats vendor-specific copying or user-driven exports. Tell users that uninstall
   or device loss can remove private data and explicit export is required for their backup.
 - Do not claim application-level encryption or secure erasure beyond the actual implementation.
 - Delete-all-data is confirmed explicitly: stop capture, cancel/join jobs, fence new commits,
-  then remove notes/trash/pending/recovery state and clear derived caches/preferences. Let the
+  then remove notes/trash/recordings/pending/recovery state and clear derived caches/preferences. Let the
   user choose whether installed models are removed too. Stale workers must not recreate data.
 
 ---
@@ -718,7 +724,7 @@ nonara-export.zip
     └── <note-id>.md
 ```
 
-Optionally include `trash/` with an explicit user choice; exclude pending captures/audio, recovery journals, models and preferences. Explain that unfinished captures are not part of the note export. Take a consistent snapshot under repository coordination; report partial export failure and do not present a truncated ZIP as successful. Keep the exported note files portable and human-readable without requiring NONARA to open them.
+Optionally include `trash/` with an explicit user choice; exclude audio recordings, pending captures, recovery journals, models and preferences. The ZIP contains portable Markdown notes. Take a consistent snapshot under repository coordination; report partial export failure and do not present a truncated ZIP as successful.
 
 **Import:** Validate YAML and UUID filenames; reject absolute/traversing paths, symlinks and duplicate archive paths. Set bounds on entry count, per-note size, total expanded size and compression ratio before allocation/extraction. Treat limits as explicit errors, not truncation. Import each valid note atomically; report imported/skipped/conflicting/unsupported files. Keep conflicting IDs untouched and offer an explicit separate-copy action with a new ID. Preserve bodies/timestamps and permitted metadata. Future schemas remain read-only/unsupported. Never overwrite an existing file or trust imported capture receipts to finish local jobs. Rebuild the index after import.
 
@@ -746,7 +752,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 
 ### Included
 
-- Home: browse notes, derived titles, timestamps, search, pending capture status.
+- Home: browse notes, optional titles, timestamps, search, pending capture status.
 - Create/edit plain-text notes; optional custom titles; reliable autosave.
 - Microphone recording with Pause/Resume, Cancel/Discard, Finish.
 - On-device Sherpa transcription with durable retryable audio; creates/appends editable note text.
@@ -790,7 +796,7 @@ Optionally include `trash/` with an explicit user choice; exclude pending captur
 - [ ] Pending captures remain visible; Sherpa retries retained audio and reports failures.
 - [ ] A new successful transcription creates one note, even after crash/retry.
 - [ ] Dictating into an existing note does not replace newer user edits or insert text twice.
-- [ ] Sherpa audio is deleted only after note/receipt/completed-record persistence; cleanup retries cannot insert twice.
+- [ ] Completed recordings remain playable after note/receipt persistence and pending chunk cleanup. Retrying a commit cannot insert the transcript twice.
 - [ ] Crash injection before/after each journal/note/completed-record boundary proves no duplicate insertion and no deletion of required recovery audio. Discard/delete/undo racing a worker cannot resurrect content.
 
 ### User experience and privacy

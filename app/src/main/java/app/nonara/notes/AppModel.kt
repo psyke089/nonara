@@ -1,6 +1,8 @@
 package app.nonara.notes
 
 import android.app.Application
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +29,10 @@ class AppModel @JvmOverloads constructor(application:Application, private val ed
     var deleted by mutableStateOf(emptyList<Note>()); private set
     var pending by mutableStateOf(emptyList<JSONObject>()); private set
     var editor by mutableStateOf<Note?>(null); private set
+    var recordings by mutableStateOf(emptyList<NoteRecording>()); private set
+    var playingRecording by mutableStateOf<String?>(null); private set
+    private var recordingPlayer:MediaPlayer?=null
+    private var playerPrepared=false
     var page by mutableStateOf("home")
     var query by mutableStateOf("")
     var status by mutableStateOf(""); private set
@@ -97,12 +103,67 @@ class AppModel @JvmOverloads constructor(application:Application, private val ed
         notes=data.first; deleted=data.second; pending=data.third
         if(wasSaved && status=="Saved" && editorSession===session && revision==rev)
             notes.firstOrNull { it.id==editor?.id && it.body!=editorBase }?.let { editor=it; editorBase=it.body }
+        refreshRecordings()
         installed=withContext(Dispatchers.IO) { models.ids().filter { models.ready(it) }.toSet() }
         refreshDownloads()
     }
     fun open(note:Note?=null) {
+        stopPlayback()
+        recordings=emptyList()
         saveJob?.cancel(); editorSession=Any(); editorConflict=false; conflictCopyId=null
         editorBase=note?.body.orEmpty(); revision=System.nanoTime(); editor=note ?: Note.create(); page="editor"; status=if(note==null) "" else "Saved"
+        viewModelScope.launch { refreshRecordings() }
+    }
+    private suspend fun refreshRecordings() {
+        val id=editor?.id ?: return
+        val list=withContext(Dispatchers.IO) { store.recordings(id) }
+        if (editor?.id==id) recordings=list
+    }
+    fun toggleRecordingPlayback(recording:NoteRecording) {
+        if (page!="editor" || active!=null || recording !in recordings) return
+        try {
+            if (playingRecording==recording.id) {
+                if (playerPrepared) recordingPlayer?.pause() else stopPlayback()
+                playingRecording=null
+                return
+            }
+            val current=recordingPlayer
+            if (playerPrepared && current!=null && pausedRecording==recording.id) {
+                current.start()
+                playingRecording=recording.id
+                return
+            }
+            stopPlayback()
+            val player=MediaPlayer()
+            recordingPlayer=player
+            playingRecording=recording.id
+            pausedRecording=recording.id
+            player.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            recording.file.inputStream().use { player.setDataSource(it.fd) }
+            player.setOnPreparedListener {
+                if (recordingPlayer===it) {
+                    playerPrepared=true
+                    try { it.start() } catch (_:IllegalStateException) { playbackFailed() }
+                }
+            }
+            player.setOnCompletionListener { if (recordingPlayer===it) stopPlayback() }
+            player.setOnErrorListener { failed,_,_ ->
+                if (recordingPlayer===failed) playbackFailed()
+                true
+            }
+            player.prepareAsync()
+        } catch (_:Exception) { playbackFailed() }
+    }
+    private var pausedRecording:String?=null
+    private fun playbackFailed() {
+        stopPlayback()
+        error="Couldn't play the recording."
+    }
+    fun stopPlayback() {
+        val player=recordingPlayer
+        recordingPlayer=null; playerPrepared=false; playingRecording=null; pausedRecording=null
+        player?.release()
     }
     fun edit(body:String,title:String?=editor?.title) {
         val old=editor ?: return
@@ -180,7 +241,10 @@ class AppModel @JvmOverloads constructor(application:Application, private val ed
         }
         refresh()
     }
-    fun lifecycleStop() { viewModelScope.launch { flush(); if(active!=null && !paused) pause(true) } }
+    fun lifecycleStop() {
+        stopPlayback()
+        viewModelScope.launch { flush(); if(active!=null && !paused) pause(true) }
+    }
     fun trash(note:Note) = task {
         require(pending.none { it.getString("target")==note.id }) { "Finish or discard pending dictation first" }
         saveJob?.cancelAndJoin()
@@ -201,6 +265,7 @@ class AppModel @JvmOverloads constructor(application:Application, private val ed
         begin(r)
     }
     private fun begin(r:JSONObject) {
+        stopPlayback()
         val id=r.getString("id")
         microphoneLevel=0f
         captureLabel=models.info(r.getString("model")).name + " · " + if(r.getString("language")=="de-DE") "Deutsch" else "English"
@@ -316,5 +381,5 @@ class AppModel @JvmOverloads constructor(application:Application, private val ed
         }; status=summary; refresh()
     }
     fun task(block:suspend ()->Unit) { viewModelScope.launch { try { block() } catch(e:CancellationException) { throw e } catch(e:Exception) { error=e.message ?: "Operation failed" } } }
-    override fun onCleared() { clockJob?.cancel(); stopPreview(); recorder.release(); super.onCleared() }
+    override fun onCleared() { stopPlayback(); clockJob?.cancel(); stopPreview(); recorder.release(); super.onCleared() }
 }

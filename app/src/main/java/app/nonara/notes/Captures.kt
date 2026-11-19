@@ -39,16 +39,23 @@ class Captures(private val context: Context) {
         dir(id).listFiles()?.filter { it.name!="capture.json" }?.forEach { it.deleteRecursively() }
     }
     fun enqueue(id: String) {
-        state(id,"pending")
+        synchronized(Stores.captureLock) {
+            state(id,if (read(id).getString("state")=="committing") "committing" else "pending")
+        }
         WorkManager.getInstance(context).enqueueUniqueWork(id,ExistingWorkPolicy.KEEP,
             OneTimeWorkRequestBuilder<TranscribeWorker>().setInputData(workDataOf("id" to id)).build())
     }
     fun commit(id: String, text: String) = synchronized(Stores.captureLock) {
         val r=read(id); if(r.getString("state") in listOf("discarded","completed")) return@synchronized
         require(text.isNotBlank()) { "No speech recognized. Retry or discard this recording." }
+        val target=r.getString("target")
+        require(all().none { it.getString("id")!=id && it.getString("target")==target && it.getString("state")=="committing" }) {
+            "Retry the earlier recording for this note first."
+        }
         r.put("text",text).put("state","committing"); write(r)
-        Stores.notes(context).appendCapture(r.getString("target"),id,text,r.optString("original"),
-            r.optInt("caret").takeIf { it>=0 },r.getBoolean("new"))
+        val audio=dir(id).listFiles().orEmpty().filter { it.extension=="pcm" }.sortedBy { it.name }
+        Stores.notes(context).commitRecording(target,id,text,r.optString("original"),
+            r.optInt("caret").takeIf { it>=0 },r.getBoolean("new"),audio)
         state(id,"completed")
         dir(id).listFiles()?.filter { it.name!="capture.json" }?.forEach { it.deleteRecursively() }
     }
@@ -137,6 +144,10 @@ class TranscribeWorker(context: Context, parameters: WorkerParameters): Coroutin
             } finally { try { vad.release() } finally { recognizer.close() } }
             captures.commit(id,texts.filter { it.isNotBlank() }.joinToString(" ")); Result.success()
         } catch(e: CancellationException) { throw e }
-        catch(e: Exception) { if(runCatching { captures.read(id).getString("state") }.getOrNull()!="discarded") captures.state(id,"failed",e.message ?: "Transcription failed"); Result.failure() }
+        catch(e: Exception) {
+            val state=runCatching { captures.read(id).getString("state") }.getOrNull()
+            if (state!=null && state!="discarded") captures.state(id,if (state=="committing") state else "failed",e.message ?: "Transcription failed")
+            Result.failure()
+        }
     }
 }

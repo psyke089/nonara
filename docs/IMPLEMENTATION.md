@@ -45,7 +45,7 @@ The current code is a functional first implementation, not complete acceptance o
   slot or preview error leaves PCM recording active with a concise status. Capture/note schemas
   and import/export formats are unchanged.
 - WorkManager transcription, Silero VAD, bounded decode segments and cached segment results;
-  recognized text is applied once and successful capture audio is cleaned up.
+  recognized text is applied once. Completed audio is retained as a local WAV for playback in the editor.
 
 ## Still required for full spec completion
 

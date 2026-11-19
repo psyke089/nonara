@@ -45,6 +45,7 @@ fun NotesScreen(model:AppModel=viewModel()) {
     val clipboard=LocalClipboardManager.current
     var text by remember(model.editor?.id) { mutableStateOf(TextFieldValue(model.editor?.body.orEmpty())) }
     LaunchedEffect(model.editor?.body) { if(model.status=="Saved" && text.text!=model.editor?.body) text=TextFieldValue(model.editor?.body.orEmpty()) }
+    LaunchedEffect(model.page) { if (model.page!="editor") model.stopPlayback() }
     var confirmDiscard by remember { mutableStateOf<String?>(null) }
     var confirmDownload by remember { mutableStateOf<String?>(null) }
     var confirmDiscardDownload by remember { mutableStateOf<String?>(null) }
@@ -75,12 +76,18 @@ fun NotesScreen(model:AppModel=viewModel()) {
         if(model.active!=null) model.error="Finish or discard the recording first." else back()
     }
     Scaffold(
-        topBar={ TopAppBar(
+        topBar={ Column { TopAppBar(
             title={ if(model.page=="home") Image(painterResource(R.drawable.nonara_wordmark),"Nonara",modifier=Modifier.width(124.dp).height(60.dp),colorFilter=ColorFilter.tint(MaterialTheme.colorScheme.primary))
                 else Text(model.page.replaceFirstChar { it.uppercase() },fontFamily=FontFamily.Serif,style=MaterialTheme.typography.headlineMedium) },
             navigationIcon={ if(model.page!="home") IconAction("Back",ActionGlyph.BACK,::back) },
             actions={ if(model.page=="home") IconAction("Settings",ActionGlyph.SETTINGS,{model.page="settings"}) }
-        ) },
+        )
+            Box(Modifier.fillMaxWidth().height(24.dp).padding(horizontal=20.dp),contentAlignment=Alignment.CenterStart) {
+                Text(model.status,modifier=Modifier.fillMaxWidth().testTag("app-status"),
+                    style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines=1,overflow=TextOverflow.Ellipsis)
+            }
+        } },
         bottomBar={ if(model.page=="home" || model.page=="editor") Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=12.dp),horizontalArrangement=Arrangement.spacedBy(16.dp,Alignment.End)) {
             if(model.page=="home") IconAction("Write",ActionGlyph.WRITE,{model.open()},prominent=true)
             IconAction("Record",ActionGlyph.MIC,::record,prominent=true)
@@ -97,31 +104,32 @@ fun NotesScreen(model:AppModel=viewModel()) {
                         if(capture.optString("text").isNotBlank()) Text(capture.optString("text"),maxLines=3)
                         FlowRow {
                             if(capture.getString("state") in listOf("paused","interrupted")) IconAction("Resume recording",ActionGlyph.PLAY,{model.resume(capture.getString("id"))})
-                            IconAction("Finish / Retry",ActionGlyph.RESTORE,{model.retry(capture.getString("id"))},enabled=capture.getString("state") in listOf("failed","interrupted","paused"))
+                            val state=capture.getString("state")
+                            val canRetry=state in listOf("failed","interrupted","paused") || (state=="committing" && capture.optString("error").isNotBlank())
+                            IconAction("Finish / Retry",ActionGlyph.RESTORE,{model.retry(capture.getString("id"))},enabled=canRetry)
                             IconAction("Discard",ActionGlyph.DELETE,{confirmDiscard=capture.getString("id")})
                         }
                     } }
                 }
-                val filtered=model.notes.filter { model.query.isBlank() || (it.displayTitle+"\n"+it.body).contains(model.query,ignoreCase=true) }
+                val filtered=model.notes.filter { model.query.isBlank() || it.title.orEmpty().contains(model.query,ignoreCase=true) || it.body.contains(model.query,ignoreCase=true) }
                 val groups=filtered.groupBy { val date=it.updatedAt.atZone(ZoneId.systemDefault()).toLocalDate(); when(date) { LocalDate.now()->"Today"; LocalDate.now().minusDays(1)->"Yesterday"; else->"Earlier" } }
                 groups.forEach { (group,notes) ->
                     item { Text(group,style=MaterialTheme.typography.labelLarge,modifier=Modifier.padding(top=12.dp)) }
                     items(notes,key={it.id}) { note -> Card(onClick={model.open(note)},shape=RoundedCornerShape(22.dp),colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow),modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
                         Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                            Text(note.displayTitle,style=MaterialTheme.typography.titleMedium,maxLines=2)
+                            note.title?.takeIf { it.isNotBlank() }?.let { Text(it,style=MaterialTheme.typography.titleMedium,maxLines=2) }
                             Text(note.body,maxLines=3,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),style=MaterialTheme.typography.labelSmall)
                         }
                     } }
                 }
-                item { if(model.canUndo) IconAction("Undo last deletion",ActionGlyph.UNDO,{model.undoDelete()}); if(model.status.isNotBlank()) Text(model.status,style=MaterialTheme.typography.labelSmall) }
+                if(model.canUndo) item { IconAction("Undo last deletion",ActionGlyph.UNDO,{model.undoDelete()}) }
             }
             "editor" -> Column(Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
                 TextField(model.editor?.title.orEmpty(),{model.edit(text.text,it)},placeholder={Text("Title")},textStyle=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif),
                     colors=TextFieldDefaults.colors(focusedContainerColor=MaterialTheme.colorScheme.background,unfocusedContainerColor=MaterialTheme.colorScheme.background),modifier=Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(text,{text=it;model.edit(it.text)},placeholder={Text("Note")},shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=280.dp))
-                Text(model.status,style=MaterialTheme.typography.labelSmall)
                 if(model.editorConflict) {
                     Text("This note changed while editing. Save your draft as a copy to keep both versions.",style=MaterialTheme.typography.bodySmall)
                     IconAction("Save as copy",ActionGlyph.CHECK,{model.saveConflictCopy()})
@@ -130,6 +138,21 @@ fun NotesScreen(model:AppModel=viewModel()) {
                     IconAction("Copy",ActionGlyph.COPY,{clipboard.setText(AnnotatedString(text.text))})
                     IconAction("Share",ActionGlyph.SHARE,{context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type="text/plain"; putExtra(Intent.EXTRA_TEXT,text.text) },"Share note"))})
                     IconAction("Delete",ActionGlyph.DELETE,{model.editor?.let(model::trash)})
+                }
+                if (model.recordings.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("Recordings",style=MaterialTheme.typography.titleMedium,modifier=Modifier.padding(top=12.dp))
+                    model.recordings.forEach { recording ->
+                        val date=Instant.ofEpochMilli(recording.recordedAtMillis).atZone(ZoneId.systemDefault())
+                        val playing=model.playingRecording==recording.id
+                        ListItem(
+                            headlineContent={ Text(date.format(DateTimeFormatter.ofPattern("d MMM · HH:mm"))) },
+                            supportingContent={ Text(recordingTime(recording.durationMillis)) },
+                            trailingContent={ IconAction(if(playing) "Pause recording" else "Play recording",
+                                if(playing) ActionGlyph.PAUSE else ActionGlyph.PLAY,{model.toggleRecordingPlayback(recording)}) },
+                            modifier=Modifier.testTag("recording-${recording.id}")
+                        )
+                    }
                 }
             }
             "settings" -> Column(Modifier.fillMaxSize().padding(padding).padding(20.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {
@@ -192,7 +215,10 @@ fun NotesScreen(model:AppModel=viewModel()) {
             }
             "trash" -> LazyColumn(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
                 if(model.deleted.isEmpty()) item { Text("Trash is empty") }
-                items(model.deleted,key={it.id}) { note -> ListItem(headlineContent={Text(note.displayTitle)},trailingContent={IconAction("Restore",ActionGlyph.RESTORE,{model.restore(note)})}) }
+                items(model.deleted,key={it.id}) { note ->
+                    ListItem(headlineContent={Text(note.title?.takeIf { it.isNotBlank() } ?: note.body,maxLines=2,overflow=TextOverflow.Ellipsis)},
+                        trailingContent={IconAction("Restore",ActionGlyph.RESTORE,{model.restore(note)})})
+                }
             }
         }
     }

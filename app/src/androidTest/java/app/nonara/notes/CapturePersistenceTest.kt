@@ -8,6 +8,7 @@ import org.junit.Test
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 import java.io.File
+import android.media.MediaPlayer
 
 @RunWith(AndroidJUnit4::class)
 class CapturePersistenceTest {
@@ -32,6 +33,36 @@ class CapturePersistenceTest {
         captures.commit(id,"Ein neuer Gedanke")
         assertEquals("completed",captures.read(id).getString("state"))
         assertEquals("Ein neuer Gedanke",Stores.notes(context).list().single().body)
+    }
+    @Test fun completedRecordingKeepsPlayableAudioAfterRetryAndTrashRestore()=isolated { context ->
+        val captures=Captures(context)
+        val note=Note.create("Original")
+        val store=Stores.notes(context)
+        store.save(note)
+        val id=captures.create(note,null,"de-DE","base").getString("id")
+        val first=ByteArray(16_000) { 11 }
+        val second=ByteArray(16_000) { 22 }
+        captures.dir(id).resolve("2.pcm").writeBytes(second)
+        captures.dir(id).resolve("1.pcm").writeBytes(first)
+        captures.commit(id,"Diktat")
+        captures.commit(id,"Diktat")
+        store.trash(note.id)
+        store.restore(note.id)
+        val wav=context.filesDir.resolve("recordings/${note.id}/$id.wav")
+        assertTrue(wav.isFile)
+        assertArrayEquals(first+second,wav.readBytes().drop(44).toByteArray())
+        assertFalse(captures.dir(id).resolve("1.pcm").exists())
+        assertEquals("Original\n\nDiktat",store.get(note.id)?.body)
+        val player=MediaPlayer()
+        try {
+            wav.inputStream().use { player.setDataSource(it.fd) }
+            player.prepare()
+            assertEquals(1000,player.duration)
+        } finally { player.release() }
+        store.trash(note.id)
+        context.filesDir.resolve("trash/${note.id}.deleted").writeText("2000-01-01T00:00:00Z")
+        store.purge()
+        assertFalse(wav.exists())
     }
     @Test fun deletedTargetPreservesRecognizedTextForRecovery()=isolated { context ->
         val store=Stores.notes(context); val note=Note.create("Existing")

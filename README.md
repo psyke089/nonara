@@ -18,6 +18,7 @@ The app includes Home/search, a Markdown editor with automatic saves, trash/rest
 import/export, theme settings, model downloads, and recoverable Sherpa recording/transcription
 as the only dictation backend. Streaming-capable models also offer live preview while PCM
 remains recoverable; final note text is committed from saved-audio transcription after Finish.
+Completed recordings stay on the device and can be played below their notes. ZIP export contains Markdown notes only.
 The interface uses the supplied wordmark, icon actions and language/streaming model chips.
 Android 13 / API 33 is the minimum.
 

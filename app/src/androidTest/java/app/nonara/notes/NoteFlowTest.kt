@@ -11,6 +11,49 @@ import org.junit.Assert.*
 @RunWith(AndroidJUnit4::class)
 class NoteFlowTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
+
+    @Test fun untitledPreviewAppearsOnceAndStatusStaysInTheSamePlace() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val note=Note.create("Untitled preview ${newId()}")
+        model.store.save(note)
+        try {
+            compose.runOnIdle { model.query=note.body }
+            compose.waitUntil(5000) { model.notes.any { it.id==note.id } }
+            compose.onAllNodesWithText(note.body,useUnmergedTree=true).filter(!hasSetTextAction()).assertCountEquals(1)
+            compose.onNodeWithTag("note-${note.id}").performClick()
+            val editorStatus=compose.onNodeWithTag("app-status").assertTextEquals("Saved").fetchSemanticsNode().boundsInRoot
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.waitUntil(5000) { model.page=="home" }
+            assertEquals(editorStatus,compose.onNodeWithTag("app-status").assertTextEquals("Saved").fetchSemanticsNode().boundsInRoot)
+            compose.onNodeWithContentDescription("Settings").performClick()
+            assertEquals(editorStatus,compose.onNodeWithTag("app-status").assertTextEquals("Saved").fetchSemanticsNode().boundsInRoot)
+        } finally { compose.activity.filesDir.resolve("notes/${note.id}.md").delete() }
+    }
+
+    @Test fun editorListsAndPlaysACompletedRecording() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val note=Note.create("Recording list ${newId()}")
+        model.store.save(note)
+        val id=model.captures.create(note,null,"de-DE","base").getString("id")
+        try {
+            model.captures.dir(id).resolve("1.pcm").writeBytes(ByteArray(320_000))
+            model.captures.commit(id,"Recorded text")
+            compose.runOnIdle { model.open(model.store.get(note.id)) }
+            compose.onNodeWithTag("body").assertTextContains("${note.body}\n\nRecorded text")
+            compose.waitUntil(5000) { compose.onAllNodesWithTag("recording-$id").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithTag("recording-$id").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithContentDescription("Play recording").performClick()
+            compose.onNodeWithContentDescription("Pause recording").assertExists()
+            compose.onNodeWithContentDescription("Pause recording").performClick()
+            compose.onNodeWithContentDescription("Play recording").assertExists()
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.waitUntil(5000) { model.page=="home" }
+        } finally {
+            compose.activity.filesDir.resolve("notes/${note.id}.md").delete()
+            compose.activity.filesDir.resolve("recordings/${note.id}").deleteRecursively()
+            model.captures.dir(id).deleteRecursively()
+        }
+    }
     @Test fun landscapeKeepsWritingAndModelSelectionReachable() {
         val previous=compose.activity.requestedOrientation
         try {
