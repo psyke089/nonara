@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import androidx.compose.runtime.*
 import java.time.Instant
 import java.util.zip.*
@@ -15,7 +17,7 @@ import java.io.ByteArrayOutputStream
 import org.json.JSONObject
 
 private val android.content.Context.preferences by preferencesDataStore("settings")
-class AppModel(application:Application):AndroidViewModel(application) {
+class AppModel @JvmOverloads constructor(application:Application, private val editorIo:CoroutineDispatcher=Dispatchers.IO):AndroidViewModel(application) {
     val context get()=getApplication<Application>()
     val store=Stores.notes(context)
     val captures=Captures(context)
@@ -53,8 +55,12 @@ class AppModel(application:Application):AndroidViewModel(application) {
     private val downloads=ModelDownloads(context)
     var modelTransfers by mutableStateOf(emptyMap<String,TransferRecord>()); private set
     private var saveJob:Job?=null
-        private var revision=System.nanoTime()
+    private val saveMutex=Mutex()
+    private var revision=System.nanoTime()
     private var editorBase=""
+    private var editorSession=Any()
+    var editorConflict by mutableStateOf(false); private set
+    private var conflictCopyId:String?=null
     private var undo by mutableStateOf<Note?>(null)
     val canUndo get()=undo!=null
     init {
@@ -84,37 +90,100 @@ class AppModel(application:Application):AndroidViewModel(application) {
         }
     }
     suspend fun refresh() {
+        val session=editorSession
+        val rev=revision
+        val wasSaved=status=="Saved"
         val data=withContext(Dispatchers.IO) { Triple(store.list(),store.list(true),captures.all()) }
         notes=data.first; deleted=data.second; pending=data.third
-        if(status=="Saved") notes.firstOrNull { it.id==editor?.id && it.body!=editorBase }?.let { editor=it; editorBase=it.body }
+        if(wasSaved && status=="Saved" && editorSession===session && revision==rev)
+            notes.firstOrNull { it.id==editor?.id && it.body!=editorBase }?.let { editor=it; editorBase=it.body }
         installed=withContext(Dispatchers.IO) { models.ids().filter { models.ready(it) }.toSet() }
         refreshDownloads()
     }
-    fun open(note:Note?=null) { editorBase=note?.body.orEmpty(); revision=System.nanoTime(); editor=note ?: Note.create(); page="editor"; status=if(note==null) "" else "Saved" }
+    fun open(note:Note?=null) {
+        saveJob?.cancel(); editorSession=Any(); editorConflict=false; conflictCopyId=null
+        editorBase=note?.body.orEmpty(); revision=System.nanoTime(); editor=note ?: Note.create(); page="editor"; status=if(note==null) "" else "Saved"
+    }
     fun edit(body:String,title:String?=editor?.title) {
         val old=editor ?: return
         val new=old.copy(body=body,title=title?.takeIf { it.isNotBlank() },updatedAt=maxOf(Instant.now(),old.updatedAt))
-        editor=new; revision=System.nanoTime(); status="Saving…"; saveJob?.cancel()
+        editor=new; revision=System.nanoTime(); saveJob?.cancel()
+        if(editorConflict) return
+        status="Saving…"
         val rev=revision
+        val session=editorSession
         saveJob=viewModelScope.launch {
-            try { if(new.body.isNotBlank() || editorBase.isNotEmpty()) withContext(Dispatchers.IO) { store.journal(new,rev,editorBase) }; delay(400); persist(new,rev) }
+            try {
+                saveMutex.withLock {
+                    if(editorSession!==session || revision!=rev || editorConflict) return@launch
+                    val base=editorBase
+                    if(new.body.isNotBlank() || base.isNotEmpty()) withContext(editorIo) { store.journal(new,rev,base) }
+                }
+                delay(400); persist(new,rev,session)
+            }
             catch(e:CancellationException) { throw e }
-            catch(e:Exception) { status="Couldn't save"; error=e.message }
+            catch(e:Exception) { saveFailed(e,session) }
         }
     }
-    private suspend fun persist(note:Note,rev:Long) {
-        try {
-            if(note.body.isNotBlank() || note.title!=null || withContext(Dispatchers.IO) { store.get(note.id)!=null })
-                withContext(Dispatchers.IO) { store.saveEdited(note,rev,editorBase) }
-            editorBase=note.body
-            if(editor?.id==note.id && revision==rev) status="Saved"
-        } catch(e:Exception) { status="Couldn't save"; error=e.message }
+    private fun saveFailed(e:Exception,session:Any) {
+        if(editorSession!==session) return
+        status="Couldn't save"
+        if(e is NoteEditConflict) editorConflict=true
+        error=e.message
     }
-    fun leave() { viewModelScope.launch { flush(); if(status!="Couldn't save") { editor=null; page="home"; refresh() } } }
-    suspend fun flush() { saveJob?.cancelAndJoin(); editor?.let { persist(it,revision) } }
+    private suspend fun persist(note:Note,rev:Long,session:Any) = withContext(NonCancellable) {
+        // Once a write starts, its baseline acknowledgement must finish even if typing cancels
+        // the debounce job. Otherwise our next edit mistakes this write for an external change.
+        saveMutex.withLock {
+            if(editorSession!==session || revision!=rev || editorConflict) return@withLock
+            try {
+                val base=editorBase
+                val saved=withContext(editorIo) {
+                    if(note.body.isNotBlank() || note.title!=null || store.get(note.id)!=null) {
+                        store.saveEdited(note,rev,base); true
+                    } else false
+                }
+                if(editorSession===session) {
+                    if(saved) editorBase=note.body
+                    if(revision==rev) status="Saved"
+                }
+            } catch(e:CancellationException) { throw e }
+            catch(e:Exception) { saveFailed(e,session) }
+        }
+    }
+    fun leave() { viewModelScope.launch {
+        if(editorConflict) { error=NoteEditConflict().message; return@launch }
+        flush(); if(status!="Couldn't save") { editor=null; page="home"; refresh() }
+    } }
+    suspend fun flush() {
+        val session=editorSession
+        saveJob?.cancelAndJoin()
+        if(editorSession===session && !editorConflict) editor?.let { persist(it,revision,session) }
+    }
+    fun saveConflictCopy()=task {
+        saveJob?.cancelAndJoin()
+        withContext(NonCancellable) {
+            saveMutex.withLock {
+                if(!editorConflict) return@withLock
+                val draft=editor ?: return@withLock
+                val rev=revision
+                val session=editorSession
+                val id=conflictCopyId ?: newId().also { conflictCopyId=it }
+                val copy=draft.copy(id=id,extra=draft.extra - "last_applied_capture_id")
+                withContext(editorIo) { store.save(copy,rev) }
+                if(editorSession===session) {
+                    editorBase=copy.body; editorConflict=false; conflictCopyId=null; error=null
+                    if(revision==rev) { editor=null; page="home"; status="Saved" }
+                    else { editor=editor?.copy(id=id); edit(editor!!.body) }
+                }
+            }
+        }
+        refresh()
+    }
     fun lifecycleStop() { viewModelScope.launch { flush(); if(active!=null && !paused) pause(true) } }
     fun trash(note:Note) = task {
         require(pending.none { it.getString("target")==note.id }) { "Finish or discard pending dictation first" }
+        saveJob?.cancelAndJoin()
         withContext(Dispatchers.IO) { store.trash(note.id) }; undo=note; editor=null; page="home"; refresh()
     }
     fun undoDelete()=task { undo?.let { withContext(Dispatchers.IO) { store.restore(it.id) }; undo=null; refresh() } }

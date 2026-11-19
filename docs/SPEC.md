@@ -303,12 +303,15 @@ The in-memory index is always rebuildable from `notes/`; deleting it must never 
 - Serialize writes to the **same note** with a per-note mutex/actor and a monotonically increasing edit revision. Old writes must never overwrite newer revisions.
 - On navigation away, lifecycle stop, and other appropriate boundaries, request an immediate flush of the latest draft rather than waiting for debounce alone.
 - Do not report **Saved** before the latest revision is durably committed.
+- Once a canonical write starts, finish its editor-baseline acknowledgement even if a new edit cancels the debounce job. Serialize journaling and canonical saves so the app never treats its own completed write as an external conflict.
 - Journal edit revisions for recovery before the debounced canonical write; keep the journal bounded and recover on startup. Report persistence failure explicitly. Only edits durably journaled or saved are guaranteed after process death; UI-visible keystrokes still awaiting storage can be lost. Do not promise recovery of every keystroke after sudden termination.
 - Avoid writing empty new note files until the user has entered meaningful content. Clearing an existing note does not silently delete it.
 
 ### 6.2 Concurrent edits / external changes
 
 v1 owns its app-private note directory, so concurrent writers should be rare. Still, repositories must serialize all app-originating changes. If future public-folder access or sync is added, implement file change detection and conflict copies rather than last-writer-wins overwrites.
+
+If a saved note changes while a dirty editor is open (for example, a finished transcription), preserve the draft and stop automatic retries for that editing session. Offer **Save as copy** to preserve both versions and return Home, or **Keep editing** to dismiss the message. Further typing and lifecycle flushes must not repeatedly reopen the conflict dialog.
 
 ### 6.3 Durability invariants
 

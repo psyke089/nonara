@@ -76,6 +76,8 @@ fun atomicWrite(file: File, bytes: ByteArray) {
     FileOutputStream(tmp).use { it.write(bytes); it.fd.sync() }
     Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
 }
+class NoteEditConflict:IllegalStateException("This note changed while editing. Save your draft as a copy to keep both versions.")
+
 class NoteStore(private val root: File) {
     val problems = mutableListOf<String>()
     private val notes = File(root, "notes").apply { mkdirs() }
@@ -102,12 +104,12 @@ class NoteStore(private val root: File) {
     @Synchronized fun get(id: String): Note? = path(notes,id).takeIf { it.exists() }?.let { read(it) }
     @Synchronized fun journal(n: Note, revision: Long, expectedBody: String? = null) {
         if (revision < (revisions[n.id] ?: Long.MIN_VALUE)) return
-        if (expectedBody != null) check(get(n.id)?.body.orEmpty() == expectedBody) { "This note changed while editing. Your text is still in the editor; copy it before reopening." }
+        if (expectedBody != null && get(n.id)?.body.orEmpty() != expectedBody) throw NoteEditConflict()
         atomicWrite(path(recovery,n.id),NoteCodec.encode(n).toByteArray())
         revisions[n.id]=revision
     }
     @Synchronized fun saveEdited(n: Note, revision: Long, expectedBody: String) {
-        check(get(n.id)?.body.orEmpty() == expectedBody) { "This note changed while editing. Copy your draft before reopening." }
+        if (get(n.id)?.body.orEmpty() != expectedBody) throw NoteEditConflict()
         save(n,revision)
     }
     @Synchronized fun save(n: Note, revision: Long = System.nanoTime()) {

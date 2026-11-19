@@ -122,6 +122,10 @@ fun NotesScreen(model:AppModel=viewModel()) {
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(text,{text=it;model.edit(it.text)},placeholder={Text("Note")},shape=RoundedCornerShape(24.dp),modifier=Modifier.fillMaxWidth().testTag("body").heightIn(min=280.dp))
                 Text(model.status,style=MaterialTheme.typography.labelSmall)
+                if(model.editorConflict) {
+                    Text("This note changed while editing. Save your draft as a copy to keep both versions.",style=MaterialTheme.typography.bodySmall)
+                    IconAction("Save as copy",ActionGlyph.CHECK,{model.saveConflictCopy()})
+                }
                 FlowRow {
                     IconAction("Copy",ActionGlyph.COPY,{clipboard.setText(AnnotatedString(text.text))})
                     IconAction("Share",ActionGlyph.SHARE,{context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type="text/plain"; putExtra(Intent.EXTRA_TEXT,text.text) },"Share note"))})
@@ -204,7 +208,11 @@ fun NotesScreen(model:AppModel=viewModel()) {
         confirmButton={IconAction("Download",ActionGlyph.DOWNLOAD,{confirmDownload=null;download(id)})},dismissButton={IconAction("Cancel",ActionGlyph.CANCEL,{confirmDownload=null})}) }
     confirmDiscardDownload?.let { id -> AlertDialog(onDismissRequest={confirmDiscardDownload=null},title={Text("Discard partial download?")},text={Text("Saved progress will be deleted. Installed model files are kept.")},
         confirmButton={IconAction("Discard",ActionGlyph.DELETE,{model.discardDownload(id);confirmDiscardDownload=null})},dismissButton={IconAction("Keep",ActionGlyph.CANCEL,{confirmDiscardDownload=null})}) }
-    model.error?.let { message -> AlertDialog(onDismissRequest={model.error=null},title={Text("Unable to continue")},text={Text(message)},confirmButton={IconAction("OK",ActionGlyph.CHECK,{model.error=null})}) }
+    model.error?.let { message ->
+        AlertDialog(onDismissRequest={model.error=null},title={Text("Unable to continue")},text={Text(message)},
+            confirmButton={ if(model.editorConflict) IconAction("Save as copy",ActionGlyph.CHECK,{model.saveConflictCopy()}) else IconAction("OK",ActionGlyph.CHECK,{model.error=null}) },
+            dismissButton={ if(model.editorConflict) IconAction("Keep editing",ActionGlyph.CANCEL,{model.error=null}) })
+    }
 }
 
 @Composable
