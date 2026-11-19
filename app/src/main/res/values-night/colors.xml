@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="paper">#0D1320</color>
-    <color name="accent">#9DB7FF</color>
-    <bool name="light_system_bars">false</bool>
-</resources>

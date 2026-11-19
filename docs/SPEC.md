@@ -61,7 +61,7 @@ its generator are retired. Do not regenerate or redraw the supplied launcher art
 wordmark artwork is a separate asset; use supplied artwork if available, otherwise a locally
 generated placeholder without claiming it is the user’s original mark.
 
-The light palette pairs ice white `#F5F7FC` and navy ink `#111B32` with cobalt `#314DE2` for primary actions and selection. Citron highlights language chips and iris marks dates. In dark mode the background shifts to midnight `#0D1320`, with ice blue, lime and lilac accents.
+The light palette pairs warm paper `#F6F1E7` and ink `#23211C` with burgundy `#76283A` and moss `#3F5D4B`. Dark mode keeps the burgundy accent on charcoal surfaces.
 
 The brand can be expressive while the interface stays quiet. Use the Gothic motif for the mark, **not** for body text. Avoid noisy paper patterns behind editable content, excessive splatters, faux-antique controls, and busy gradients. Support light, dark, and follow-system appearance; test text and control contrast before shipping.
 

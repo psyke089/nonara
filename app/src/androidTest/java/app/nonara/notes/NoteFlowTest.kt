@@ -12,6 +12,27 @@ import org.junit.Assert.*
 class NoteFlowTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
 
+    @Test fun homeShowsSeparatePenAndMicrophoneButtonsAndRestoresCardNotes() {
+        val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
+        val note=Note.create("Card appearance ${newId()}")
+        model.store.save(note)
+        try {
+            compose.waitUntil(5000) { model.notes.any { it.id==note.id } }
+            val card=compose.onNodeWithTag("note-${note.id}").assertIsDisplayed()
+            card.assertHasClickAction()
+            compose.onNodeWithContentDescription("Write").assertIsDisplayed().assertHasClickAction()
+            compose.onNodeWithContentDescription("Record").assertIsDisplayed().assertHasClickAction()
+            val pen=compose.onNodeWithContentDescription("Write").fetchSemanticsNode().boundsInRoot
+            val microphone=compose.onNodeWithContentDescription("Record").fetchSemanticsNode().boundsInRoot
+            assertTrue(pen.right < microphone.left || microphone.right < pen.left)
+            compose.onNodeWithContentDescription("Write").performClick()
+            compose.onNodeWithContentDescription("Back").performClick()
+            compose.waitUntil(5000) { model.page=="home" }
+            compose.onNodeWithTag("note-${note.id}").performClick()
+            compose.waitUntil(5000) { model.page=="editor" }
+        } finally { compose.activity.filesDir.resolve("notes/${note.id}.md").delete() }
+    }
+
     @Test fun untitledPreviewAppearsOnceAndStatusStaysInTheSamePlace() {
         val model=androidx.lifecycle.ViewModelProvider(compose.activity)[AppModel::class.java]
         val note=Note.create("Untitled preview ${newId()}")

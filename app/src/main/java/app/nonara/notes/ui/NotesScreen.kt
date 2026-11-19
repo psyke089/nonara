@@ -92,15 +92,10 @@ fun NotesScreen(model:AppModel=viewModel()) {
         } },
         bottomBar={
             if (model.page=="home" || model.page=="editor") {
-                Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=8.dp),
-                    contentAlignment=Alignment.CenterEnd) {
-                    Surface(shape=RoundedCornerShape(32.dp),color=MaterialTheme.colorScheme.surfaceContainer,
-                        border=BorderStroke(1.dp,MaterialTheme.colorScheme.outlineVariant)) {
-                        Row(Modifier.padding(4.dp),verticalAlignment=Alignment.CenterVertically) {
-                            if (model.page=="home") IconAction("Write",ActionGlyph.WRITE,{model.open()})
-                            IconAction("Record",ActionGlyph.MIC,::record,prominent=true)
-                        }
-                    }
+                Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal=20.dp,vertical=8.dp),
+                    horizontalArrangement=Arrangement.spacedBy(12.dp,Alignment.End),verticalAlignment=Alignment.CenterVertically) {
+                    if (model.page=="home") IconAction("Write",ActionGlyph.WRITE,{model.open()},prominent=true)
+                    IconAction("Record",ActionGlyph.MIC,::record,prominent=true)
                 }
             }
         }
@@ -137,22 +132,15 @@ fun NotesScreen(model:AppModel=viewModel()) {
                     } }
                 }
                 val filtered=model.notes.filter { model.query.isBlank() || it.title.orEmpty().contains(model.query,ignoreCase=true) || it.body.contains(model.query,ignoreCase=true) }
-                items(filtered,key={it.id}) { note ->
-                    Surface(onClick={model.open(note)},color=MaterialTheme.colorScheme.background,
-                        modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
-                        Column {
-                            Column(Modifier.padding(horizontal=4.dp,vertical=12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                                Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),
-                                    style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.tertiary)
-                                note.title?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it,style=MaterialTheme.typography.titleLarge,maxLines=2,overflow=TextOverflow.Ellipsis)
-                                }
-                                Text(note.body,style=MaterialTheme.typography.bodyLarge,maxLines=3,overflow=TextOverflow.Ellipsis)
-                            }
-                            HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
-                        }
+                items(filtered,key={it.id}) { note -> Card(onClick={model.open(note)},shape=RoundedCornerShape(22.dp),
+                    colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.surfaceContainerLow),
+                    modifier=Modifier.fillMaxWidth().testTag("note-${note.id}")) {
+                    Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                        note.title?.takeIf { it.isNotBlank() }?.let { Text(it,style=MaterialTheme.typography.titleMedium,maxLines=2) }
+                        Text(note.body,maxLines=3,overflow=TextOverflow.Ellipsis,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(note.updatedAt.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM · HH:mm")),style=MaterialTheme.typography.labelSmall)
                     }
-                }
+                } }
                 if(model.canUndo) item { IconAction("Undo last deletion",ActionGlyph.UNDO,{model.undoDelete()}) }
             }
             "editor" -> Column(Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
